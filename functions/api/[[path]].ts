@@ -248,18 +248,24 @@ export async function onRequest(context: { request: Request; env: Env }): Promis
     // Secure Folder Status
     if (path === "/api/secure-folder-status") {
       const kv = getKvStore(env);
-      return jsonResponse({
-        status: "ok",
-        diskPath: kv ? "Cloudflare KV Namespace (Persisted)" : "Cloudflare Edge In-Memory (KV Not Bound)",
-        source: kv ? "cloudflare_kv" : "edge_memory",
-        testResult: {
-          write: "success",
-          read: "success",
-          delete: "success",
-          errors: { write: null, read: null, delete: null }
-        },
-        timestamp: new Date().toISOString()
-      });
+      if (kv) {
+        return jsonResponse({
+          status: "ok",
+          kvBound: true,
+          diskPath: "پایگاه داده ابری کلودفلر (Cloudflare KV Persisted)",
+          source: "cloudflare_kv",
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        return jsonResponse({
+          status: "unbound",
+          kvBound: false,
+          diskPath: "حافظه موقت ایج (پایگاه داده KV متصل نشده است)",
+          source: "edge_memory",
+          error: "پایگاه داده KV در کلودفلر متصل نشده است.",
+          timestamp: new Date().toISOString()
+        });
+      }
     }
 
     // Data Read

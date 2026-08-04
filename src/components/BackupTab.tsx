@@ -4,6 +4,7 @@ import {
   Upload, 
   CheckCircle2, 
   AlertTriangle, 
+  AlertCircle,
   RefreshCw,
   Trash2,
   Server,
@@ -427,18 +428,31 @@ export function BackupTab({
             className={`flex items-center gap-1 border rounded-lg px-2 py-0.5 duration-100 cursor-pointer ${
               secureFolderStatus.status === 'ok' 
                 ? 'bg-emerald-50 border-emerald-200/60 text-emerald-800 hover:bg-emerald-100'
+                : secureFolderStatus.status === 'unbound'
+                ? 'bg-amber-50 border-amber-200/60 text-amber-800 hover:bg-amber-100'
                 : secureFolderStatus.status === 'error'
                 ? 'bg-rose-50 border-rose-200/60 text-rose-800 hover:bg-rose-100'
-                : 'bg-amber-50 border-amber-200/60 text-amber-800 hover:bg-amber-100'
+                : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
             }`}
-            title={`وضعیت دیتاسنتر: ${
-              secureFolderStatus.status === 'ok' ? 'اتصال ایمن برقرار است' : 
-              secureFolderStatus.status === 'error' ? 'عدم امکان نوشتن در پوشه دیتابیس' : 'در حال بررسی...'
-            } (برای تست مجدد کلیک کنید)`}
+            title={`وضعیت پایگاه داده: ${
+              secureFolderStatus.status === 'ok' ? 'پایگاه داده KV متصل و ایمن است' : 
+              secureFolderStatus.status === 'unbound' ? 'پایگاه داده KV کلودفلر متصل نشده است (همگام‌سازی بین مرورگرها فعال نیست)' :
+              secureFolderStatus.status === 'error' ? 'خطا در برقراری ارتباط با سرور' : 'در حال بررسی...'
+            } (برای آزمایش مجدد کلیک کنید)`}
           >
-            <Server className={`w-3.5 h-3.5 ${secureFolderStatus.status === 'loading' ? 'animate-spin text-amber-600' : secureFolderStatus.status === 'ok' ? 'text-emerald-600' : 'text-rose-600'}`} />
+            <Server className={`w-3.5 h-3.5 ${
+              secureFolderStatus.status === 'loading' ? 'animate-spin text-amber-600' : 
+              secureFolderStatus.status === 'ok' ? 'text-emerald-600' : 
+              secureFolderStatus.status === 'unbound' ? 'text-amber-600' : 'text-rose-600'
+            }`} />
             <span className="text-[9px] font-black leading-none">
-              {secureFolderStatus.status === 'ok' ? 'دیتاسنتر متصل' : secureFolderStatus.status === 'error' ? 'خطای دیتاسنتر' : 'درحال بارگذاری'}
+              {secureFolderStatus.status === 'ok' 
+                ? 'دیتابیس KV متصل' 
+                : secureFolderStatus.status === 'unbound'
+                ? 'دیتابیس متصل نیست' 
+                : secureFolderStatus.status === 'error'
+                ? 'خطای ارتباط' 
+                : 'درحال بارگذاری'}
             </span>
           </button>
         </div>
@@ -506,6 +520,42 @@ export function BackupTab({
 
         {/* Scrollable Container with the Settings Table */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
+
+          {/* Cloudflare KV Unbound Warning & Guide Banner */}
+          {(secureFolderStatus.status === 'unbound' || secureFolderStatus.source === 'edge_memory') && (
+            <div className="bg-amber-50/90 border border-amber-200/90 rounded-xl p-3.5 space-y-2.5 text-slate-800 text-xs">
+              <div className="flex items-start gap-2.5">
+                <div className="p-1.5 bg-amber-100 text-amber-800 rounded-lg shrink-0 mt-0.5">
+                  <AlertCircle className="w-4 h-4 text-amber-700" />
+                </div>
+                <div className="space-y-1 leading-relaxed">
+                  <h3 className="font-extrabold text-amber-900 text-xs">
+                    ⚠️ عدم اتصال به پایگاه داده ابری (Cloudflare KV)
+                  </h3>
+                  <p className="text-[11px] text-amber-800 font-medium">
+                    اطلاعات ثبت‌شده هم‌اکنون فقط در حافظه محلی مرورگر ذخیره می‌شوند و بین مرورگرها یا دستگاه‌های مختلف همگام‌سازی (Sync) <strong>نمی‌شوند</strong>.
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-white/80 border border-amber-200/60 rounded-lg p-3 space-y-1.5 text-[10.5px]">
+                <div className="font-bold text-amber-950">📌 راهنمای ۵ گام سریع برای اتصال دیتابیس رایگان کلودفلر (Cloudflare KV):</div>
+                <ol className="list-decimal list-inside space-y-1 text-slate-700 pr-1 leading-normal font-medium">
+                  <li>وارد پنل کلودفلر (<a href="https://dash.cloudflare.com" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline font-bold">dash.cloudflare.com</a>) شوید.</li>
+                  <li>از منوی سمت چپ به مسیر <strong>Storage & Databases</strong> ➔ <strong>KV</strong> بروید و یک KV Namespace به نام <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold text-amber-900">COWORKING_KV</code> بسازید.</li>
+                  <li>در پنل کلودفلر به بخش <strong>Workers & Pages</strong> رفته و روی پروژه <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold text-amber-900">coworkf</code> کلیک کنید.</li>
+                  <li>به تب <strong>Settings</strong> ➔ <strong>Functions</strong> ➔ <strong>KV namespace bindings</strong> رفته و روی <strong>Add binding</strong> کلیک کنید:
+                    <div className="mr-4 my-1 p-1.5 bg-amber-50 border border-amber-200 rounded font-mono text-[10px] space-y-0.5">
+                      <div>Variable name: <strong>COWORKING_KV</strong></div>
+                      <div>KV namespace: <strong>COWORKING_KV</strong> (انتخاب KV ایجادشده)</div>
+                    </div>
+                  </li>
+                  <li>پروژه را مجدداً Deploy کنید تا داده‌ها دائماً و بین همه دستگاه‌ها همگام شوند.</li>
+                </ol>
+              </div>
+            </div>
+          )}
+
           <table className="w-full text-right border-collapse text-xs">
             <thead>
               <tr className="border-b border-slate-200 text-slate-500 font-bold select-none text-[10.5px]">
