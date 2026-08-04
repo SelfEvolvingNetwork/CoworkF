@@ -1,17 +1,14 @@
-name = "parastu-coworking"
+name = "coworkf"
+compatibility_date = "2026-08-04"
+
+# For Cloudflare Workers with Assets (npx wrangler deploy)
+assets = { directory = "./dist" }
+
+# For Cloudflare Pages (npx wrangler pages deploy dist)
 pages_build_output_dir = "dist"
 
-# Configuration for Cloudflare Pages / Workers deployment
-# Build Command: npm run build
-# Build Output Directory: dist
-
 # Optional: Cloudflare KV Namespace binding for persistent storage
-# To enable persistent storage on Cloudflare Pages Functions:
-# 1. Create a KV namespace on Cloudflare Dashboard -> Workers & Pages -> KV -> "COWORKING_KV"
-# 2. Add the binding in Cloudflare Pages project settings (Settings -> Functions -> KV namespace bindings):
-#    Variable Name: COWORKING_KV -> KV Namespace: COWORKING_KV
-#
-# Or uncomment below if deploying via Wrangler CLI:
 # [[kv_namespaces]]
 # binding = "COWORKING_KV"
 # id = "YOUR_KV_NAMESPACE_ID"
+
