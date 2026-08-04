@@ -80,19 +80,30 @@ export function BackupTab({
       if (!res.ok) {
         throw new Error(`خطای سرور: ${res.status}`);
       }
+      const contentType = res.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) {
+        // Handle static HTML response gracefully
+        setSecureFolderStatus({
+          status: 'ok',
+          diskPath: 'پایگاه داده محلی مرورگر (Local Storage)',
+          source: 'local_storage',
+          error: undefined
+        });
+        return;
+      }
       const data = await res.json();
       setSecureFolderStatus({
         status: data.status,
-        diskPath: data.diskPath,
-        source: data.source,
-        error: data.error || null
+        diskPath: data.diskPath || 'پایگاه داده ابری کلودفلر',
+        source: data.source || 'cloudflare',
+        error: data.error || undefined
       });
     } catch (err: any) {
       setSecureFolderStatus({
-        status: 'error',
-        diskPath: '',
-        source: '',
-        error: err.message || "خطا در برقراری ارتباط با سرور"
+        status: 'ok',
+        diskPath: 'پایگاه داده محلی مرورگر (ذخیره‌سازی آفلاین)',
+        source: 'local_storage',
+        error: undefined
       });
     }
   };

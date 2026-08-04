@@ -1,4 +1,5 @@
 name = "coworkf"
+main = "src/worker.ts"
 compatibility_date = "2026-08-04"
 
 [build]
