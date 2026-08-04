@@ -1,10 +1,12 @@
 name = "coworkf"
 compatibility_date = "2026-08-04"
 
-# For Cloudflare Workers with Assets (npx wrangler deploy)
-assets = { directory = "./dist" }
+[build]
+command = "npm run build"
 
-# For Cloudflare Pages (npx wrangler pages deploy dist)
+[assets]
+directory = "./dist"
+
 pages_build_output_dir = "dist"
 
 # Optional: Cloudflare KV Namespace binding for persistent storage
