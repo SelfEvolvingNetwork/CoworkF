@@ -1,8 +1,9 @@
 import { onRequest } from "../functions/api/[[path]]";
 
 export interface Env {
-  COWORKING_KV?: any;
-  KV?: any;
+  DB?: any;
+  COWORKING_D1?: any;
+  d1?: any;
   ASSETS?: { fetch: typeof fetch };
 }
 

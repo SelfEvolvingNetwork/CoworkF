@@ -4,8 +4,6 @@ interface Env {
   DB?: any;
   COWORKING_D1?: any;
   d1?: any;
-  COWORKING_KV?: any;
-  KV?: any;
 }
 
 interface DbState {
@@ -173,10 +171,6 @@ function getD1Store(env: Env) {
   return env.DB || env.COWORKING_D1 || env.d1 || null;
 }
 
-function getKvStore(env: Env) {
-  return env.COWORKING_KV || env.KV || null;
-}
-
 const TABLE_STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS config (
     key TEXT PRIMARY KEY,
@@ -244,7 +238,7 @@ async function ensureD1Tables(d1: any) {
   d1Initialized = true;
 }
 
-async function readD1State(d1: any, env?: Env): Promise<DbState> {
+async function readD1State(d1: any): Promise<DbState> {
   await ensureD1Tables(d1);
 
   const [configRows, shiftRows, memberRows, termRows, noteRows, attendanceRows, overrideRows, metaRow] = await Promise.all([
@@ -264,22 +258,7 @@ async function readD1State(d1: any, env?: Env): Promise<DbState> {
                     (!termRows?.results || termRows.results.length === 0);
 
   if (isD1Empty) {
-    let seedData = DEFAULT_DB;
-    if (env) {
-      const kv = getKvStore(env);
-      if (kv) {
-        try {
-          const dataStr = await kv.get("database_state");
-          if (dataStr) {
-            const parsed = JSON.parse(dataStr);
-            seedData = migrateAndNormalizeState(parsed);
-          }
-        } catch (e) {
-          console.error("KV read error during D1 seed:", e);
-        }
-      }
-    }
-    return await writeFullStateToD1(d1, seedData);
+    return await writeFullStateToD1(d1, DEFAULT_DB);
   }
 
   const configObj: any = { ...DEFAULT_DB.config };
@@ -460,22 +439,9 @@ async function readDb(env: Env): Promise<DbState> {
   const d1 = getD1Store(env);
   if (d1) {
     try {
-      return await readD1State(d1, env);
+      return await readD1State(d1);
     } catch (err) {
       console.error("Cloudflare D1 read error:", err);
-    }
-  }
-
-  const kv = getKvStore(env);
-  if (kv) {
-    try {
-      const dataStr = await kv.get("database_state");
-      if (dataStr) {
-        const parsed = JSON.parse(dataStr);
-        return migrateAndNormalizeState(parsed);
-      }
-    } catch (e) {
-      console.error("Cloudflare KV read error:", e);
     }
   }
 
@@ -496,15 +462,6 @@ async function writeDb(env: Env, state: DbState): Promise<DbState> {
       return await writeFullStateToD1(d1, cleanState);
     } catch (err) {
       console.error("Cloudflare D1 write error:", err);
-    }
-  }
-
-  const kv = getKvStore(env);
-  if (kv) {
-    try {
-      await kv.put("database_state", JSON.stringify(cleanState));
-    } catch (e) {
-      console.error("Cloudflare KV write error:", e);
     }
   }
 
@@ -575,18 +532,6 @@ export async function onRequest(context: { request: Request; env: Env }): Promis
             timestamp: new Date().toISOString()
           });
         }
-      }
-
-      const kv = getKvStore(env);
-      if (kv) {
-        return jsonResponse({
-          status: "ok",
-          d1Bound: false,
-          kvBound: true,
-          diskPath: "پایگاه داده ابری کلودفلر (Cloudflare KV Persisted)",
-          source: "cloudflare_kv",
-          timestamp: new Date().toISOString()
-        });
       }
 
       return jsonResponse({
