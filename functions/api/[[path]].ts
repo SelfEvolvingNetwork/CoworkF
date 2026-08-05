@@ -177,78 +177,74 @@ function getKvStore(env: Env) {
   return env.COWORKING_KV || env.KV || null;
 }
 
+const TABLE_STATEMENTS = [
+  `CREATE TABLE IF NOT EXISTS config (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )`,
+  `CREATE TABLE IF NOT EXISTS shifts (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    week_days TEXT NOT NULL,
+    total_regular INTEGER NOT NULL DEFAULT 20,
+    total_premium INTEGER NOT NULL DEFAULT 5,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )`,
+  `CREATE TABLE IF NOT EXISTS members (
+    id TEXT PRIMARY KEY,
+    full_name TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )`,
+  `CREATE TABLE IF NOT EXISTS terms (
+    id TEXT PRIMARY KEY,
+    member_id TEXT NOT NULL,
+    shift_id TEXT NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    sessions_count INTEGER NOT NULL DEFAULT 12,
+    desk_type TEXT NOT NULL DEFAULT 'regular',
+    sessions TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_terms_member ON terms(member_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_terms_shift ON terms(shift_id)`,
+  `CREATE TABLE IF NOT EXISTS session_notes (
+    term_id TEXT NOT NULL,
+    date_str TEXT NOT NULL,
+    note TEXT NOT NULL,
+    PRIMARY KEY (term_id, date_str)
+  )`,
+  `CREATE TABLE IF NOT EXISTS session_attendance (
+    term_id TEXT NOT NULL,
+    date_str TEXT NOT NULL,
+    status TEXT NOT NULL,
+    PRIMARY KEY (term_id, date_str)
+  )`,
+  `CREATE TABLE IF NOT EXISTS calendar_overrides (
+    date_str TEXT PRIMARY KEY,
+    status TEXT NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS db_meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )`
+];
+
 async function ensureD1Tables(d1: any) {
   if (d1Initialized) return;
-  try {
-    await d1.exec(`
-      CREATE TABLE IF NOT EXISTS config (
-        key TEXT PRIMARY KEY,
-        value TEXT NOT NULL,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      CREATE TABLE IF NOT EXISTS shifts (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        week_days TEXT NOT NULL,
-        total_regular INTEGER NOT NULL DEFAULT 20,
-        total_premium INTEGER NOT NULL DEFAULT 5,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      CREATE TABLE IF NOT EXISTS members (
-        id TEXT PRIMARY KEY,
-        full_name TEXT NOT NULL,
-        phone TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      CREATE TABLE IF NOT EXISTS terms (
-        id TEXT PRIMARY KEY,
-        member_id TEXT NOT NULL,
-        shift_id TEXT NOT NULL,
-        start_date TEXT NOT NULL,
-        end_date TEXT NOT NULL,
-        sessions_count INTEGER NOT NULL DEFAULT 12,
-        desk_type TEXT NOT NULL DEFAULT 'regular',
-        sessions TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      CREATE INDEX IF NOT EXISTS idx_terms_member ON terms(member_id);
-      CREATE INDEX IF NOT EXISTS idx_terms_shift ON terms(shift_id);
-
-      CREATE TABLE IF NOT EXISTS session_notes (
-        term_id TEXT NOT NULL,
-        date_str TEXT NOT NULL,
-        note TEXT NOT NULL,
-        PRIMARY KEY (term_id, date_str)
-      );
-
-      CREATE TABLE IF NOT EXISTS session_attendance (
-        term_id TEXT NOT NULL,
-        date_str TEXT NOT NULL,
-        status TEXT NOT NULL,
-        PRIMARY KEY (term_id, date_str)
-      );
-
-      CREATE TABLE IF NOT EXISTS calendar_overrides (
-        date_str TEXT PRIMARY KEY,
-        status TEXT NOT NULL
-      );
-
-      CREATE TABLE IF NOT EXISTS db_meta (
-        key TEXT PRIMARY KEY,
-        value TEXT NOT NULL,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-    d1Initialized = true;
-  } catch (err) {
-    console.error("D1 schema initialization error:", err);
+  for (const stmt of TABLE_STATEMENTS) {
+    await d1.prepare(stmt).run();
   }
+  d1Initialized = true;
 }
 
-async function readD1State(d1: any): Promise<DbState> {
+async function readD1State(d1: any, env?: Env): Promise<DbState> {
   await ensureD1Tables(d1);
 
   const [configRows, shiftRows, memberRows, termRows, noteRows, attendanceRows, overrideRows, metaRow] = await Promise.all([
@@ -261,6 +257,30 @@ async function readD1State(d1: any): Promise<DbState> {
     d1.prepare("SELECT date_str, status FROM calendar_overrides").all(),
     d1.prepare("SELECT value FROM db_meta WHERE key = 'version'").first(),
   ]);
+
+  const isD1Empty = (!configRows?.results || configRows.results.length === 0) &&
+                    (!shiftRows?.results || shiftRows.results.length === 0) &&
+                    (!memberRows?.results || memberRows.results.length === 0) &&
+                    (!termRows?.results || termRows.results.length === 0);
+
+  if (isD1Empty) {
+    let seedData = DEFAULT_DB;
+    if (env) {
+      const kv = getKvStore(env);
+      if (kv) {
+        try {
+          const dataStr = await kv.get("database_state");
+          if (dataStr) {
+            const parsed = JSON.parse(dataStr);
+            seedData = migrateAndNormalizeState(parsed);
+          }
+        } catch (e) {
+          console.error("KV read error during D1 seed:", e);
+        }
+      }
+    }
+    return await writeFullStateToD1(d1, seedData);
+  }
 
   const configObj: any = { ...DEFAULT_DB.config };
   if (configRows && configRows.results) {
@@ -440,7 +460,7 @@ async function readDb(env: Env): Promise<DbState> {
   const d1 = getD1Store(env);
   if (d1) {
     try {
-      return await readD1State(d1);
+      return await readD1State(d1, env);
     } catch (err) {
       console.error("Cloudflare D1 read error:", err);
     }
@@ -534,13 +554,27 @@ export async function onRequest(context: { request: Request; env: Env }): Promis
     if (path === "/api/secure-folder-status") {
       const d1 = getD1Store(env);
       if (d1) {
-        return jsonResponse({
-          status: "ok",
-          d1Bound: true,
-          diskPath: "پایگاه داده ابری کلودفلر (Cloudflare D1 SQL Database)",
-          source: "cloudflare_d1",
-          timestamp: new Date().toISOString()
-        });
+        try {
+          await ensureD1Tables(d1);
+          await d1.prepare("SELECT count(*) as count FROM config").first();
+          return jsonResponse({
+            status: "ok",
+            d1Bound: true,
+            diskPath: "پایگاه داده ابری کلودفلر (Cloudflare D1 SQL Database)",
+            source: "cloudflare_d1",
+            timestamp: new Date().toISOString()
+          });
+        } catch (d1Err: any) {
+          console.error("Cloudflare D1 initialization check error:", d1Err);
+          return jsonResponse({
+            status: "error",
+            d1Bound: true,
+            diskPath: `خطا در اسکیما یا تیبل‌های D1: ${d1Err?.message || "ناشناخته"}`,
+            source: "cloudflare_d1_error",
+            error: d1Err?.message || "امکان بررسی تیبل‌های D1 وجود ندارد",
+            timestamp: new Date().toISOString()
+          });
+        }
       }
 
       const kv = getKvStore(env);
