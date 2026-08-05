@@ -15,7 +15,7 @@ class_name = "CoworkingDO"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["CoworkingDO"]
+new_sqlite_classes = ["CoworkingDO"]
 
 # Optional: Cloudflare KV Namespace binding for fallback
 # [[kv_namespaces]]
