@@ -530,11 +530,29 @@ async function startServer() {
 
   app.get("/api/secure-folder-status", async (req, res) => {
     try {
+      const sqlite = getSqliteDb();
+      const mCount = (sqlite.prepare("SELECT count(*) as count FROM members").get() as any)?.count ?? 0;
+      const sCount = (sqlite.prepare("SELECT count(*) as count FROM shifts").get() as any)?.count ?? 0;
+      const tCount = (sqlite.prepare("SELECT count(*) as count FROM terms").get() as any)?.count ?? 0;
+      const cCount = (sqlite.prepare("SELECT count(*) as count FROM config").get() as any)?.count ?? 0;
+      const nCount = (sqlite.prepare("SELECT count(*) as count FROM session_notes").get() as any)?.count ?? 0;
+      const aCount = (sqlite.prepare("SELECT count(*) as count FROM session_attendance").get() as any)?.count ?? 0;
+      const oCount = (sqlite.prepare("SELECT count(*) as count FROM calendar_overrides").get() as any)?.count ?? 0;
+
       res.json({
         status: "ok",
-        sqliteBound: true,
+        d1Bound: true,
         diskPath: SQLITE_PATH,
-        source: dirSource,
+        source: "local_sqlite",
+        tableCounts: {
+          members: Number(mCount),
+          shifts: Number(sCount),
+          terms: Number(tCount),
+          config: Number(cCount),
+          sessionNotes: Number(nCount),
+          sessionAttendance: Number(aCount),
+          calendarOverrides: Number(oCount)
+        },
         timestamp: new Date().toISOString()
       });
     } catch (err: any) {

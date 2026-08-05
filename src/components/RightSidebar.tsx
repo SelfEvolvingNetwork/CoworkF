@@ -22,6 +22,7 @@ interface RightSidebarProps {
   queueCount: number;
   academyName?: string;
   academyLogo?: string;
+  d1Status?: any;
 }
 
 export function RightSidebar({ 
@@ -33,15 +34,21 @@ export function RightSidebar({
   uploadStatus,
   queueCount,
   academyName = 'آموزشگاه پرستو',
-  academyLogo
+  academyLogo,
+  d1Status
 }: RightSidebarProps) {
   const menuItems = [
     { id: 'reports', icon: FileSpreadsheet, title: 'گزارش‌ها', keyHint: 'Alt + 1' },
     { id: 'calendar', icon: Calendar, title: 'تقویم کاری', keyHint: 'Alt + 2' },
     { id: 'profile', icon: User, title: 'مشترکین', keyHint: 'Alt + 3' },
     { id: 'shifts', icon: Clock, title: 'سانس‌ها', keyHint: 'Alt + 4' },
-    { id: 'backup', icon: HardDrive, title: 'بکاپ', keyHint: 'Alt + 5' },
+    { id: 'backup', icon: HardDrive, title: 'بکاپ و دیتابیس', keyHint: 'Alt + 5' },
   ];
+
+  const hasError = uploadStatus === 'error' || d1Status?.status === 'error' || !!d1Status?.lastError;
+  const isUnbound = d1Status?.status === 'unbound';
+  const isSaving = queueCount > 0 || uploadStatus === 'saving';
+  const isSaved = uploadStatus === 'saved';
 
   return (
     <aside id="main-sidebar" className="w-16 h-full bg-slate-900 border-l border-slate-800 flex flex-col items-center py-5 gap-5 shrink-0 select-none">
@@ -100,9 +107,10 @@ export function RightSidebar({
         <div 
           id="server-upload-status-indicator"
           className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 relative group border border-transparent shrink-0 ${
-            queueCount > 0 || uploadStatus === 'saving' ? 'bg-amber-500/10' :
-            uploadStatus === 'saved' ? 'bg-emerald-500/10' :
-            uploadStatus === 'error' ? 'bg-red-500/10 border-red-500/20' : ''
+            isSaving ? 'bg-amber-500/10 border-amber-500/20' :
+            hasError ? 'bg-red-500/10 border-red-500/20' :
+            isUnbound ? 'bg-amber-500/10 border-amber-500/20' :
+            'bg-emerald-500/10 border-emerald-500/20'
           }`}
         >
           {queueCount > 0 && (
@@ -111,32 +119,35 @@ export function RightSidebar({
             </span>
           )}
 
-          {uploadStatus === 'error' ? (
+          {hasError ? (
             <CloudOff className="w-[18px] h-[18px] stroke-[1.8] text-red-500 animate-bounce shrink-0" />
+          ) : isUnbound ? (
+            <CloudOff className="w-[18px] h-[18px] stroke-[1.8] text-amber-500 shrink-0" />
           ) : (
             <Cloud className={`w-[18px] h-[18px] stroke-[1.8] shrink-0 ${
-              queueCount > 0 || uploadStatus === 'saving' ? 'text-amber-500 animate-pulse' :
-              uploadStatus === 'saved' ? 'text-emerald-500' : 'text-slate-500 hover:text-slate-400'
+              isSaving ? 'text-amber-500 animate-pulse' :
+              'text-emerald-500'
             }`} />
           )}
 
           {/* Floating Tooltip Indicator - Minimal styling */}
-          <div className="invisible group-hover:visible absolute right-14 bg-slate-950 text-slate-100 text-[10px] font-bold py-1.5 px-2.5 rounded border border-slate-800 whitespace-nowrap z-50 shadow-xl font-sans text-right scale-95 origin-left group-hover:scale-100 transition-all pointer-events-none duration-150 flex flex-col gap-0.5 shrink-0" dir="rtl">
+          <div className="invisible group-hover:visible absolute right-14 bg-slate-950 text-slate-100 text-[10px] font-bold py-1.5 px-2.5 rounded border border-slate-800 whitespace-nowrap z-50 shadow-xl font-sans text-right scale-95 origin-left group-hover:scale-100 transition-all pointer-events-none duration-150 flex flex-col gap-0.5 shrink-0 max-w-xs" dir="rtl">
             <span className={`font-black shrink-0 ${
-              queueCount > 0 || uploadStatus === 'saving' ? 'text-amber-400' :
-              uploadStatus === 'saved' ? 'text-emerald-400' :
-              uploadStatus === 'error' ? 'text-red-400' : 'text-slate-300'
+              isSaving ? 'text-amber-400' :
+              hasError ? 'text-red-400' :
+              isUnbound ? 'text-amber-400' :
+              'text-emerald-400'
             }`}>
-              {queueCount > 0 ? `در حال ارسال تغییرات (${queueCount} مورد در صف)` :
-               uploadStatus === 'saving' ? 'درحال ارسال به سرور...' :
-               uploadStatus === 'saved' ? 'تغییرات ذخیره شد' :
-               uploadStatus === 'error' ? 'خطا در ارسال داده!' : 'وضعیت اتصال سرور'}
+              {isSaving ? `در حال ثبت در D1 (${queueCount} مورد در صف)` :
+               hasError ? 'خطا در ارتباط یا ثبت دیتابیس D1!' :
+               isUnbound ? 'دیتابیس D1 متصل نیست' :
+               'دیتابیس D1 SQL متصل و پایدار'}
             </span>
-            <span className="text-[9px] text-slate-400 font-normal shrink-0">
-              {queueCount > 0 ? 'تغییرات شما به صورت پس‌زمینه و غیرهمزمان ارسال می‌شوند' :
-               uploadStatus === 'saving' ? 'در حال ثبت فایل‌های پایگاه داده' :
-               uploadStatus === 'saved' ? 'تمامی اطلاعات روی سرور ثبت شدند' :
-               uploadStatus === 'error' ? 'شبکه قطع است یا سرور پاسخ نمیدهد' : 'اتصال پایدار با پایگاه داده'}
+            <span className="text-[9px] text-slate-300 font-normal shrink-0 truncate">
+              {isSaving ? 'اطلاعات در حال ذخیره خودکار در جدول‌های D1 هستند' :
+               hasError ? (d1Status?.lastError || d1Status?.error || 'سرور با خطا مواجه شد') :
+               isUnbound ? 'جهت راهنمای اتصال دیتابیس به تب بکاپ بروید' :
+               `اعضا: ${d1Status?.tableCounts?.members ?? 0} | سانس‌ها: ${d1Status?.tableCounts?.shifts ?? 0} | ترم‌ها: ${d1Status?.tableCounts?.terms ?? 0}`}
             </span>
           </div>
         </div>

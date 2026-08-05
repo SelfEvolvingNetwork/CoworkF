@@ -26,6 +26,8 @@ interface BackupTabProps {
   saveSessionAttendance: (termId: string, dateStr: string, status: 'present' | 'absent' | '') => void;
   importBackupData: (json: string) => Promise<boolean>;
   wipeAllData?: () => void;
+  d1Status?: any;
+  fetchD1Status?: () => void;
 }
 
 export function BackupTab({
@@ -38,7 +40,9 @@ export function BackupTab({
   calendarOverrides,
   importBackupData,
   wipeAllData,
-  updateConfig
+  updateConfig,
+  d1Status,
+  fetchD1Status
 }: BackupTabProps) {
   // Client & Server Version states
   const [clientVersion, setClientVersion] = useState<string>(() => {
@@ -75,37 +79,8 @@ export function BackupTab({
   });
 
   const checkSecureFolderStatus = async () => {
-    setSecureFolderStatus(prev => ({ ...prev, status: 'loading' }));
-    try {
-      const res = await fetch("/api/secure-folder-status");
-      if (!res.ok) {
-        throw new Error(`خطای سرور: ${res.status}`);
-      }
-      const contentType = res.headers.get("content-type") || "";
-      if (!contentType.includes("application/json")) {
-        // Handle static HTML response gracefully
-        setSecureFolderStatus({
-          status: 'ok',
-          diskPath: 'پایگاه داده محلی مرورگر (Local Storage)',
-          source: 'local_storage',
-          error: undefined
-        });
-        return;
-      }
-      const data = await res.json();
-      setSecureFolderStatus({
-        status: data.status,
-        diskPath: data.diskPath || 'پایگاه داده ابری کلودفلر',
-        source: data.source || 'cloudflare',
-        error: data.error || undefined
-      });
-    } catch (err: any) {
-      setSecureFolderStatus({
-        status: 'ok',
-        diskPath: 'پایگاه داده محلی مرورگر (ذخیره‌سازی آفلاین)',
-        source: 'local_storage',
-        error: undefined
-      });
+    if (fetchD1Status) {
+      fetchD1Status();
     }
   };
 
@@ -426,34 +401,30 @@ export function BackupTab({
             type="button"
             onClick={checkSecureFolderStatus}
             className={`flex items-center gap-1 border rounded-lg px-2 py-0.5 duration-100 cursor-pointer ${
-              secureFolderStatus.status === 'ok' 
+              d1Status?.status === 'ok' && d1Status?.d1Bound
                 ? 'bg-emerald-50 border-emerald-200/60 text-emerald-800 hover:bg-emerald-100'
-                : secureFolderStatus.status === 'unbound'
+                : d1Status?.status === 'unbound'
                 ? 'bg-amber-50 border-amber-200/60 text-amber-800 hover:bg-amber-100'
-                : secureFolderStatus.status === 'error'
+                : d1Status?.status === 'error' || d1Status?.lastError
                 ? 'bg-rose-50 border-rose-200/60 text-rose-800 hover:bg-rose-100'
-                : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                : 'bg-emerald-50 border-emerald-200/60 text-emerald-800 hover:bg-emerald-100'
             }`}
-            title={`وضعیت پایگاه داده: ${
-              secureFolderStatus.status === 'ok' 
-                ? (secureFolderStatus.source === 'cloudflare_d1' ? 'پایگاه داده SQL کلودفلر (D1) متصل و ایمن است' : 'پایگاه داده متصل و فعال است')
-                : secureFolderStatus.status === 'unbound' ? 'پایگاه داده D1 کلودفلر متصل نشده است (همگام‌سازی ابری فعال نیست)' :
-              secureFolderStatus.status === 'error' ? 'خطا در برقراری ارتباط با سرور' : 'در حال بررسی...'
-            } (برای آزمایش مجدد کلیک کنید)`}
+            title="بررسی و بروزرسانی وضعیت دیتابیس D1"
           >
             <Server className={`w-3.5 h-3.5 ${
-              secureFolderStatus.status === 'loading' ? 'animate-spin text-amber-600' : 
-              secureFolderStatus.status === 'ok' ? 'text-emerald-600' : 
-              secureFolderStatus.status === 'unbound' ? 'text-amber-600' : 'text-rose-600'
+              d1Status?.status === 'loading' ? 'animate-spin text-amber-600' : 
+              d1Status?.status === 'ok' && d1Status?.d1Bound ? 'text-emerald-600' : 
+              d1Status?.status === 'unbound' ? 'text-amber-600' : 
+              d1Status?.status === 'error' || d1Status?.lastError ? 'text-rose-600' : 'text-emerald-600'
             }`} />
             <span className="text-[9px] font-black leading-none">
-              {secureFolderStatus.status === 'ok' 
-                ? (secureFolderStatus.source === 'cloudflare_d1' ? 'دیتابیس D1 متصل' : 'دیتابیس متصل')
-                : secureFolderStatus.status === 'unbound'
-                ? 'دیتابیس متصل نیست' 
-                : secureFolderStatus.status === 'error'
-                ? 'خطای ارتباط' 
-                : 'درحال بارگذاری'}
+              {d1Status?.status === 'ok' && d1Status?.d1Bound 
+                ? (d1Status?.source === 'local_sqlite' ? 'دیتابیس SQLite محلی' : 'دیتابیس D1 متصل')
+                : d1Status?.status === 'unbound'
+                ? 'دیتابیس D1 متصل نیست' 
+                : d1Status?.status === 'error' || d1Status?.lastError
+                ? 'خطا در دیتابیس D1' 
+                : 'دیتابیس متصل'}
             </span>
           </button>
         </div>
@@ -521,6 +492,103 @@ export function BackupTab({
 
         {/* Scrollable Container with the Settings Table */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
+
+          {/* D1 DATABASE DIAGNOSTICS & LIVE TABLE COUNTS CARD */}
+          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-xl p-3.5 space-y-3 shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+              <div className="flex items-center gap-2">
+                <div className={`w-2.5 h-2.5 rounded-full ${
+                  d1Status?.status === 'ok' && d1Status?.d1Bound ? 'bg-emerald-500 animate-pulse' :
+                  d1Status?.status === 'unbound' ? 'bg-amber-500' :
+                  'bg-rose-500 animate-ping'
+                }`} />
+                <h3 className="text-xs font-black text-slate-100">
+                  وضعیت شفاف پایگاه داده (Cloudflare D1 SQL Engine)
+                </h3>
+              </div>
+              <button 
+                type="button" 
+                onClick={checkSecureFolderStatus}
+                className="flex items-center gap-1 text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-2 py-1 rounded-lg transition-colors cursor-pointer font-bold"
+              >
+                <RefreshCw className="w-3 h-3" />
+                <span>بررسی مجدد</span>
+              </button>
+            </div>
+
+            {/* Connection Info Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10.5px]">
+              <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-2.5 flex flex-col gap-0.5">
+                <span className="text-slate-400 font-medium">وضعیت اتصال:</span>
+                <span className={`font-black ${
+                  d1Status?.status === 'ok' && d1Status?.d1Bound ? 'text-emerald-400' :
+                  d1Status?.status === 'unbound' ? 'text-amber-400' : 'text-rose-400'
+                }`}>
+                  {d1Status?.status === 'ok' && d1Status?.d1Bound ? '✅ متصل و آماده ذخیره‌سازی' :
+                   d1Status?.status === 'unbound' ? '⚠️ عدم اتصال به D1 Binding' :
+                   '❌ خطای ارتباط با دیتابیس'}
+                </span>
+              </div>
+
+              <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-2.5 flex flex-col gap-0.5">
+                <span className="text-slate-400 font-medium">نوع موتور دیتابیس:</span>
+                <span className="font-mono text-slate-200 font-bold">
+                  {d1Status?.source === 'local_sqlite' ? 'Local Node SQLite3' : 'Cloudflare D1 SQL'}
+                </span>
+              </div>
+
+              <div className="bg-slate-950/60 border border-slate-800 rounded-lg p-2.5 flex flex-col gap-0.5">
+                <span className="text-slate-400 font-medium">شناسه دیتابیس D1:</span>
+                <span className="font-mono text-slate-300 truncate text-[10px]" title={d1Status?.diskPath}>
+                  {d1Status?.diskPath || 'coworking_d1'}
+                </span>
+              </div>
+            </div>
+
+            {/* Table Row Counts Grid */}
+            <div className="space-y-1.5 pt-1">
+              <span className="text-[10px] text-slate-300 font-bold">تعداد واقعی رکوردهای ذخیره‌شده در جدول‌های SQL:</span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10.5px]">
+                <div className="bg-slate-950 border border-slate-800/80 rounded-lg p-2 text-center">
+                  <div className="text-slate-400 text-[9.5px]">اعضا (members)</div>
+                  <div className="text-emerald-400 font-mono font-black text-sm mt-0.5">
+                    {d1Status?.tableCounts?.members ?? members.length}
+                  </div>
+                </div>
+
+                <div className="bg-slate-950 border border-slate-800/80 rounded-lg p-2 text-center">
+                  <div className="text-slate-400 text-[9.5px]">سانس‌ها (shifts)</div>
+                  <div className="text-blue-400 font-mono font-black text-sm mt-0.5">
+                    {d1Status?.tableCounts?.shifts ?? shifts.length}
+                  </div>
+                </div>
+
+                <div className="bg-slate-950 border border-slate-800/80 rounded-lg p-2 text-center">
+                  <div className="text-slate-400 text-[9.5px]">ترم‌ها (terms)</div>
+                  <div className="text-purple-400 font-mono font-black text-sm mt-0.5">
+                    {d1Status?.tableCounts?.terms ?? terms.length}
+                  </div>
+                </div>
+
+                <div className="bg-slate-950 border border-slate-800/80 rounded-lg p-2 text-center">
+                  <div className="text-slate-400 text-[9.5px]">تنظیمات (config)</div>
+                  <div className="text-amber-400 font-mono font-black text-sm mt-0.5">
+                    {d1Status?.tableCounts?.config ?? 1}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Error Diagnostics Box (if lastError or error exists) */}
+            {(d1Status?.lastError || d1Status?.error) && (
+              <div className="bg-rose-950/80 border border-rose-800 rounded-lg p-2.5 text-[10.5px] text-rose-200 flex flex-col gap-1">
+                <span className="font-bold text-rose-300">🚨 گزارش آخرین خطای سیستم در دیتابیس D1:</span>
+                <code className="bg-slate-950 p-2 rounded border border-rose-900/50 font-mono text-[10px] text-rose-400 break-all select-all">
+                  {d1Status?.lastError || d1Status?.error}
+                </code>
+              </div>
+            )}
+          </div>
 
           {/* Cloudflare D1 Unbound Warning & Guide Banner */}
           {(secureFolderStatus.status === 'unbound' || secureFolderStatus.source === 'edge_memory') && (

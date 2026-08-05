@@ -44,6 +44,7 @@ const DEFAULT_DB: DbState = {
 
 let inMemoryDb: DbState | null = null;
 let d1Initialized = false;
+let lastD1Error: string | null = null;
 
 function recalculateAllTerms(db: DbState) {
   if (!db.terms || !Array.isArray(db.terms)) return;
@@ -100,8 +101,8 @@ function migrateAndNormalizeState(input: any): DbState {
   const normalizedShifts = rawShifts.map((s: any) => {
     if (!s || typeof s !== "object") return null;
     return {
-      id: s.id || `shift-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-      name: (s.name || s.title || "").trim(),
+      id: String(s.id || `shift-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`),
+      name: String(s.name || s.title || "").trim(),
       weekDays: Array.isArray(s.weekDays) ? s.weekDays : (Array.isArray(s.days) ? s.days : []),
       totalRegular: typeof s.totalRegular === "number" ? s.totalRegular : (typeof s.regularSeats === "number" ? s.regularSeats : 20),
       totalPremium: typeof s.totalPremium === "number" ? s.totalPremium : (typeof s.premiumSeats === "number" ? s.premiumSeats : 5)
@@ -111,9 +112,9 @@ function migrateAndNormalizeState(input: any): DbState {
   const normalizedMembers = rawMembers.map((m: any) => {
     if (!m || typeof m !== "object") return null;
     return {
-      id: m.id || `member-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-      fullName: (m.fullName || m.name || "").trim(),
-      phone: (m.phone || m.mobile || m.phoneNumber || "").trim()
+      id: String(m.id || `member-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`),
+      fullName: String(m.fullName || m.name || "").trim(),
+      phone: String(m.phone || m.mobile || m.phoneNumber || "").trim()
     };
   }).filter(Boolean);
 
@@ -127,14 +128,14 @@ function migrateAndNormalizeState(input: any): DbState {
   const normalizedTerms = rawTerms.map((t: any) => {
     if (!t || typeof t !== "object") return null;
     return {
-      id: t.id || `term-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-      memberId: t.memberId || "",
-      shiftId: t.shiftId || "",
-      startDate: t.startDate || "",
-      endDate: t.endDate || "",
+      id: String(t.id || `term-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`),
+      memberId: String(t.memberId || ""),
+      shiftId: String(t.shiftId || ""),
+      startDate: String(t.startDate || ""),
+      endDate: String(t.endDate || ""),
       sessionsCount: typeof t.sessionsCount === "number" ? t.sessionsCount : 12,
       sessions: Array.isArray(t.sessions) ? t.sessions : [],
-      deskType: t.deskType || "regular"
+      deskType: String(t.deskType || "regular")
     };
   }).filter(Boolean);
 
@@ -264,37 +265,36 @@ async function readD1State(d1: any): Promise<DbState> {
   const configObj: any = { ...DEFAULT_DB.config };
   if (configRows && configRows.results) {
     for (const r of configRows.results) {
-      if (r.key === "totalRegularDesks") configObj.totalRegularDesks = Number(r.value);
-      else if (r.key === "totalPremiumDesks") configObj.totalPremiumDesks = Number(r.value);
-      else if (r.key === "academyName") configObj.academyName = r.value;
-      else if (r.key === "academyPhone") configObj.academyPhone = r.value;
-      else if (r.key === "academyAddress") configObj.academyAddress = r.value;
-      else if (r.key === "academyLogo") configObj.academyLogo = r.value;
+      if (r.key === "totalRegularDesks" || r.key === "totalPremiumDesks") {
+        configObj[r.key] = Number(r.value);
+      } else {
+        configObj[r.key] = r.value;
+      }
     }
   }
 
   const shifts = (shiftRows?.results || []).map((s: any) => ({
-    id: s.id,
-    name: s.name,
+    id: String(s.id),
+    name: String(s.name),
     weekDays: typeof s.week_days === "string" ? JSON.parse(s.week_days) : (s.week_days || []),
     totalRegular: typeof s.total_regular === "number" ? s.total_regular : 20,
     totalPremium: typeof s.total_premium === "number" ? s.total_premium : 5,
   }));
 
   const members = (memberRows?.results || []).map((m: any) => ({
-    id: m.id,
-    fullName: m.full_name,
-    phone: m.phone,
+    id: String(m.id),
+    fullName: String(m.full_name),
+    phone: String(m.phone),
   }));
 
   const terms = (termRows?.results || []).map((t: any) => ({
-    id: t.id,
-    memberId: t.member_id,
-    shiftId: t.shift_id,
-    startDate: t.start_date,
-    endDate: t.end_date,
+    id: String(t.id),
+    memberId: String(t.member_id),
+    shiftId: String(t.shift_id),
+    startDate: String(t.start_date),
+    endDate: String(t.end_date),
     sessionsCount: typeof t.sessions_count === "number" ? t.sessions_count : 12,
-    deskType: t.desk_type || "regular",
+    deskType: String(t.desk_type || "regular"),
     sessions: typeof t.sessions === "string" ? JSON.parse(t.sessions) : (t.sessions || []),
   }));
 
@@ -352,23 +352,23 @@ async function writeFullStateToD1(d1: any, state: DbState): Promise<DbState> {
     d1.prepare("DELETE FROM session_notes"),
     d1.prepare("DELETE FROM session_attendance"),
     d1.prepare("DELETE FROM calendar_overrides"),
-    d1.prepare("INSERT INTO db_meta (key, value) VALUES ('version', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(String(cleanState.version))
+    d1.prepare("INSERT OR REPLACE INTO db_meta (key, value) VALUES ('version', ?)").bind(String(cleanState.version))
   ];
 
   for (const [k, v] of Object.entries(cleanState.config)) {
     if (v !== undefined && v !== null) {
-      batchStmts.push(d1.prepare("INSERT INTO config (key, value) VALUES (?, ?)").bind(k, String(v)));
+      batchStmts.push(d1.prepare("INSERT INTO config (key, value) VALUES (?, ?)").bind(String(k), String(v)));
     }
   }
 
   for (const s of cleanState.shifts) {
     batchStmts.push(
       d1.prepare("INSERT INTO shifts (id, name, week_days, total_regular, total_premium) VALUES (?, ?, ?, ?, ?)").bind(
-        s.id,
-        s.name,
+        String(s.id || `shift-${Date.now()}`),
+        String(s.name || ""),
         JSON.stringify(s.weekDays || []),
-        s.totalRegular ?? 20,
-        s.totalPremium ?? 5
+        Number(s.totalRegular ?? 20),
+        Number(s.totalPremium ?? 5)
       )
     );
   }
@@ -376,9 +376,9 @@ async function writeFullStateToD1(d1: any, state: DbState): Promise<DbState> {
   for (const m of cleanState.members) {
     batchStmts.push(
       d1.prepare("INSERT INTO members (id, full_name, phone) VALUES (?, ?, ?)").bind(
-        m.id,
-        m.fullName,
-        m.phone
+        String(m.id || `member-${Date.now()}`),
+        String(m.fullName || ""),
+        String(m.phone || "")
       )
     );
   }
@@ -386,47 +386,64 @@ async function writeFullStateToD1(d1: any, state: DbState): Promise<DbState> {
   for (const t of cleanState.terms) {
     batchStmts.push(
       d1.prepare("INSERT INTO terms (id, member_id, shift_id, start_date, end_date, sessions_count, desk_type, sessions) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").bind(
-        t.id,
-        t.memberId,
-        t.shiftId,
-        t.startDate,
-        t.endDate,
-        t.sessionsCount,
-        t.deskType || "regular",
+        String(t.id || `term-${Date.now()}`),
+        String(t.memberId || ""),
+        String(t.shiftId || ""),
+        String(t.startDate || ""),
+        String(t.endDate || ""),
+        Number(t.sessionsCount ?? 12),
+        String(t.deskType || "regular"),
         JSON.stringify(t.sessions || [])
       )
     );
   }
 
   for (const [key, note] of Object.entries(cleanState.sessionNotes)) {
-    const parts = key.split("_");
-    if (parts.length >= 2) {
-      const termId = parts[0];
-      const dateStr = parts.slice(1).join("_");
-      batchStmts.push(
-        d1.prepare("INSERT INTO session_notes (term_id, date_str, note) VALUES (?, ?, ?)").bind(termId, dateStr, note)
-      );
+    if (typeof note === "string") {
+      const parts = key.split("_");
+      if (parts.length >= 2) {
+        const termId = parts[0];
+        const dateStr = parts.slice(1).join("_");
+        batchStmts.push(
+          d1.prepare("INSERT INTO session_notes (term_id, date_str, note) VALUES (?, ?, ?)").bind(
+            String(termId),
+            String(dateStr),
+            String(note)
+          )
+        );
+      }
     }
   }
 
   for (const [key, status] of Object.entries(cleanState.sessionAttendance)) {
-    const parts = key.split("_");
-    if (parts.length >= 2) {
-      const termId = parts[0];
-      const dateStr = parts.slice(1).join("_");
-      batchStmts.push(
-        d1.prepare("INSERT INTO session_attendance (term_id, date_str, status) VALUES (?, ?, ?)").bind(termId, dateStr, status)
-      );
+    if (typeof status === "string") {
+      const parts = key.split("_");
+      if (parts.length >= 2) {
+        const termId = parts[0];
+        const dateStr = parts.slice(1).join("_");
+        batchStmts.push(
+          d1.prepare("INSERT INTO session_attendance (term_id, date_str, status) VALUES (?, ?, ?)").bind(
+            String(termId),
+            String(dateStr),
+            String(status)
+          )
+        );
+      }
     }
   }
 
   for (const [dateStr, status] of Object.entries(cleanState.calendarOverrides)) {
-    batchStmts.push(
-      d1.prepare("INSERT INTO calendar_overrides (date_str, status) VALUES (?, ?)").bind(dateStr, status)
-    );
+    if (typeof status === "string") {
+      batchStmts.push(
+        d1.prepare("INSERT INTO calendar_overrides (date_str, status) VALUES (?, ?)").bind(
+          String(dateStr),
+          String(status)
+        )
+      );
+    }
   }
 
-  const BATCH_SIZE = 80;
+  const BATCH_SIZE = 50;
   for (let i = 0; i < batchStmts.length; i += BATCH_SIZE) {
     const chunk = batchStmts.slice(i, i + BATCH_SIZE);
     await d1.batch(chunk);
@@ -439,9 +456,13 @@ async function readDb(env: Env): Promise<DbState> {
   const d1 = getD1Store(env);
   if (d1) {
     try {
-      return await readD1State(d1);
-    } catch (err) {
+      const data = await readD1State(d1);
+      lastD1Error = null;
+      return data;
+    } catch (err: any) {
       console.error("Cloudflare D1 read error:", err);
+      lastD1Error = err?.message || String(err);
+      throw new Error(`خطا در خواندن از دیتابیس D1 کلودفلر: ${err?.message || String(err)}`);
     }
   }
 
@@ -459,13 +480,18 @@ async function writeDb(env: Env, state: DbState): Promise<DbState> {
   const d1 = getD1Store(env);
   if (d1) {
     try {
-      return await writeFullStateToD1(d1, cleanState);
-    } catch (err) {
+      const saved = await writeFullStateToD1(d1, cleanState);
+      lastD1Error = null;
+      return saved;
+    } catch (err: any) {
       console.error("Cloudflare D1 write error:", err);
+      lastD1Error = err?.message || String(err);
+      throw new Error(`خطا در ذخیره‌سازی در دیتابیس D1 کلودفلر: ${err?.message || String(err)}`);
     }
   }
 
   inMemoryDb = cleanState;
+  lastD1Error = null;
   return cleanState;
 }
 
@@ -513,22 +539,43 @@ export async function onRequest(context: { request: Request; env: Env }): Promis
       if (d1) {
         try {
           await ensureD1Tables(d1);
-          await d1.prepare("SELECT count(*) as count FROM config").first();
+          const [mCount, sCount, tCount, cCount, nCount, aCount, oCount] = await Promise.all([
+            d1.prepare("SELECT count(*) as count FROM members").first(),
+            d1.prepare("SELECT count(*) as count FROM shifts").first(),
+            d1.prepare("SELECT count(*) as count FROM terms").first(),
+            d1.prepare("SELECT count(*) as count FROM config").first(),
+            d1.prepare("SELECT count(*) as count FROM session_notes").first(),
+            d1.prepare("SELECT count(*) as count FROM session_attendance").first(),
+            d1.prepare("SELECT count(*) as count FROM calendar_overrides").first(),
+          ]);
+
           return jsonResponse({
             status: "ok",
             d1Bound: true,
             diskPath: "پایگاه داده ابری کلودفلر (Cloudflare D1 SQL Database)",
             source: "cloudflare_d1",
+            lastError: lastD1Error || null,
+            tableCounts: {
+              members: Number(mCount?.count ?? 0),
+              shifts: Number(sCount?.count ?? 0),
+              terms: Number(tCount?.count ?? 0),
+              config: Number(cCount?.count ?? 0),
+              sessionNotes: Number(nCount?.count ?? 0),
+              sessionAttendance: Number(aCount?.count ?? 0),
+              calendarOverrides: Number(oCount?.count ?? 0)
+            },
             timestamp: new Date().toISOString()
           });
         } catch (d1Err: any) {
-          console.error("Cloudflare D1 initialization check error:", d1Err);
+          console.error("Cloudflare D1 status check error:", d1Err);
+          lastD1Error = d1Err?.message || String(d1Err);
           return jsonResponse({
             status: "error",
             d1Bound: true,
             diskPath: `خطا در اسکیما یا تیبل‌های D1: ${d1Err?.message || "ناشناخته"}`,
             source: "cloudflare_d1_error",
             error: d1Err?.message || "امکان بررسی تیبل‌های D1 وجود ندارد",
+            lastError: lastD1Error,
             timestamp: new Date().toISOString()
           });
         }
@@ -539,7 +586,7 @@ export async function onRequest(context: { request: Request; env: Env }): Promis
         d1Bound: false,
         diskPath: "حافظه موقت ایج (پایگاه داده D1 کلودفلر متصل نشده است)",
         source: "edge_memory",
-        error: "پایگاه داده D1 کلودفلر هنوز متصل نشده است.",
+        error: "پایگاه داده D1 کلودفلر هنوز متصل نشده است. لطفا Binding با متغیر DB را در پنل کلودفلر انجام دهید.",
         timestamp: new Date().toISOString()
       });
     }
