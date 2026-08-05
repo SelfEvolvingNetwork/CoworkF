@@ -540,18 +540,17 @@ export function BackupTab({
               </div>
 
               <div className="bg-white/80 border border-amber-200/60 rounded-lg p-3 space-y-1.5 text-[10.5px]">
-                <div className="font-bold text-amber-950">📌 راهنمای ۵ گام سریع برای اتصال دیتابیس SQL کلودفلر (Cloudflare D1):</div>
+                <div className="font-bold text-amber-950">📌 راهنمای اتوماتیک اتصال دیتابیس SQL کلودفلر (Cloudflare D1):</div>
                 <ol className="list-decimal list-inside space-y-1 text-slate-700 pr-1 leading-normal font-medium">
                   <li>وارد پنل کلودفلر (<a href="https://dash.cloudflare.com" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline font-bold">dash.cloudflare.com</a>) شوید.</li>
-                  <li>از منوی سمت چپ به مسیر <strong>Storage & Databases</strong> ➔ <strong>D1 Database</strong> بروید و یک دیتابیس به نام <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold text-amber-900">coworking_d1</code> بسازید.</li>
-                  <li>اسکیما را از روی فایل <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold text-amber-900">schema.sql</code> یا دستور <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold text-amber-900">wrangler d1 execute coworking_d1 --file=./schema.sql</code> اعمال کنید.</li>
+                  <li>از منوی سمت چپ به مسیر <strong>Storage & Databases</strong> ➔ <strong>D1 Database</strong> بروید و یک دیتابیس به نام <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold text-amber-900">coworking_d1</code> بسازید (ساخت اسکیما و جدول‌ها به صورت <strong>خودکار</strong> توسط کدهای برنامه انجام می‌شود).</li>
                   <li>در پنل کلودفلر به بخش <strong>Workers & Pages</strong> ➔ پروژه <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold text-amber-900">coworkf</code> ➔ <strong>Settings</strong> ➔ <strong>Functions</strong> ➔ <strong>D1 database bindings</strong> رفته و Add binding را بزنید:
                     <div className="mr-4 my-1 p-1.5 bg-amber-50 border border-amber-200 rounded font-mono text-[10px] space-y-0.5">
                       <div>Variable name: <strong>DB</strong></div>
                       <div>D1 database: <strong>coworking_d1</strong></div>
                     </div>
                   </li>
-                  <li>پروژه را منتشر کنید. فایل‌های دانلود/آپلود پشتیبان JSON همچنان با بالاترین سرعت کار خواهند کرد.</li>
+                  <li>پروژه را منتشر کنید؛ کدهای برنامه تمام اسکیما و جدول‌ها را به صورت کاملاً خودکار ایجاد خواهند نمود. سیستم دانلود و آپلود فایل‌های پشتیبان JSON نیز دست‌نخورده و با بالاترین سرعت آماده استفاده است.</li>
                 </ol>
               </div>
             </div>
