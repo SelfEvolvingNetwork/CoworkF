@@ -69,14 +69,29 @@ function migrateAndNormalizeState(input: any): DbState {
     return { ...DEFAULT_DB };
   }
 
-  const config = input.config || {};
-  const rawShifts = Array.isArray(input.shifts) ? input.shifts : [];
-  const rawMembers = Array.isArray(input.members) ? input.members : [];
-  const rawTerms = Array.isArray(input.terms) ? input.terms : [];
+  // Unwrap if nested in data, db, state, or backup property
+  let raw = input;
+  if (raw.data && typeof raw.data === "object" && !Array.isArray(raw.data)) {
+    raw = raw.data;
+  }
+  if (raw.db && typeof raw.db === "object" && !Array.isArray(raw.db)) {
+    raw = raw.db;
+  }
+  if (raw.state && typeof raw.state === "object" && !Array.isArray(raw.state)) {
+    raw = raw.state;
+  }
+  if (raw.backup && typeof raw.backup === "object" && !Array.isArray(raw.backup)) {
+    raw = raw.backup;
+  }
+
+  const config = raw.config || {};
+  const rawShifts = Array.isArray(raw.shifts) ? raw.shifts : [];
+  const rawMembers = Array.isArray(raw.members) ? raw.members : [];
+  const rawTerms = Array.isArray(raw.terms) ? raw.terms : [];
   
-  let rawNotes = input.sessionNotes || input.notes || {};
-  let rawAttendance = input.sessionAttendance || input.attendance || {};
-  let rawOverrides = input.calendarOverrides || input.overrides || {};
+  let rawNotes = raw.sessionNotes || raw.notes || {};
+  let rawAttendance = raw.sessionAttendance || raw.attendance || {};
+  let rawOverrides = raw.calendarOverrides || raw.overrides || {};
 
   if (typeof rawNotes !== "object" || rawNotes === null) rawNotes = {};
   if (typeof rawAttendance !== "object" || rawAttendance === null) rawAttendance = {};
@@ -97,10 +112,13 @@ function migrateAndNormalizeState(input: any): DbState {
 
   const normalizedShifts = rawShifts.map((s: any) => {
     if (!s || typeof s !== "object") return null;
+    const rawDays = Array.isArray(s.weekDays) ? s.weekDays : (Array.isArray(s.days) ? s.days : []);
+    const weekDays = rawDays.map((d: any) => Number(d)).filter((n: number) => !isNaN(n) && n >= 0 && n <= 6);
+
     return {
-      id: s.id || `shift-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-      name: (s.name || s.title || "").trim(),
-      weekDays: Array.isArray(s.weekDays) ? s.weekDays : (Array.isArray(s.days) ? s.days : []),
+      id: String(s.id || `shift-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`),
+      name: String(s.name || s.title || "").trim(),
+      weekDays,
       totalRegular: typeof s.totalRegular === "number" ? s.totalRegular : (typeof s.regularSeats === "number" ? s.regularSeats : 20),
       totalPremium: typeof s.totalPremium === "number" ? s.totalPremium : (typeof s.premiumSeats === "number" ? s.premiumSeats : 5)
     };
@@ -109,49 +127,57 @@ function migrateAndNormalizeState(input: any): DbState {
   const normalizedMembers = rawMembers.map((m: any) => {
     if (!m || typeof m !== "object") return null;
     return {
-      id: m.id || `member-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-      fullName: (m.fullName || m.name || "").trim(),
-      phone: (m.phone || m.mobile || m.phoneNumber || "").trim()
+      id: String(m.id || `member-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`),
+      fullName: String(m.fullName || m.name || "").trim(),
+      phone: String(m.phone || m.mobile || m.phoneNumber || "").trim()
     };
   }).filter(Boolean);
 
   const normalizedOverrides: Record<string, "holiday" | "working"> = {};
   for (const [key, val] of Object.entries(rawOverrides)) {
     if (val === "holiday" || val === "working") {
-      normalizedOverrides[key] = val;
+      const cleanKey = key.toString().replace(/-/g, '/');
+      normalizedOverrides[cleanKey] = val;
     }
   }
 
   const normalizedTerms = rawTerms.map((t: any) => {
     if (!t || typeof t !== "object") return null;
+    const startDate = String(t.startDate || "").trim().replace(/-/g, '/');
+    const endDate = String(t.endDate || "").trim().replace(/-/g, '/');
+    const rawSessions = Array.isArray(t.sessions) ? t.sessions : [];
+    const sessions = rawSessions.map((sess: any) => String(sess).replace(/-/g, '/'));
+
     return {
-      id: t.id || `term-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-      memberId: t.memberId || "",
-      shiftId: t.shiftId || "",
-      startDate: t.startDate || "",
-      endDate: t.endDate || "",
-      sessionsCount: typeof t.sessionsCount === "number" ? t.sessionsCount : 12,
-      sessions: Array.isArray(t.sessions) ? t.sessions : [],
-      deskType: t.deskType || "regular"
+      id: String(t.id || `term-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`),
+      memberId: String(t.memberId || ""),
+      shiftId: String(t.shiftId || ""),
+      startDate,
+      endDate,
+      sessionsCount: typeof t.sessionsCount === "number" ? t.sessionsCount : (typeof t.count === "number" ? t.count : 12),
+      sessions,
+      deskType: t.deskType === "premium" ? "premium" : "regular"
     };
   }).filter(Boolean);
 
   const cleanNotes: Record<string, string> = {};
   for (const [key, value] of Object.entries(rawNotes)) {
     if (typeof value === "string") {
-      cleanNotes[key] = value;
+      const cleanKey = key.toString().replace(/-/g, '/');
+      cleanNotes[cleanKey] = value;
     }
   }
 
   const cleanAttendance: Record<string, string> = {};
   for (const [key, value] of Object.entries(rawAttendance)) {
     if (typeof value === "string") {
-      cleanAttendance[key] = value;
+      const cleanKey = key.toString().replace(/-/g, '/');
+      cleanAttendance[cleanKey] = value;
     }
   }
 
   const cleanState: DbState = {
-    version: typeof input.version === "number" ? input.version : 1,
+    version: typeof raw.version === "number" ? raw.version : (typeof input.version === "number" ? input.version : 1),
     config: normalizedConfig,
     shifts: normalizedShifts,
     members: normalizedMembers,

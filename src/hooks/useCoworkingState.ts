@@ -620,16 +620,21 @@ export function useCoworkingState() {
     setQueueCount(0);
 
     try {
-      const data = JSON.parse(jsonString);
+      if (!jsonString || typeof jsonString !== 'string') {
+        throw new Error("فایل ورودی معتبر نمی‌باشد");
+      }
+      const cleanStr = jsonString.replace(/^\uFEFF/, '').trim();
+      const parsedData = JSON.parse(cleanStr);
+
       const res = await fetch("/api/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data }),
+        body: JSON.stringify({ data: parsedData }),
       });
       if (!res.ok) {
         throw new Error("Server import failed");
       }
-      const db = await res.json();
+      const db = (await res.json()) as any;
       syncWithServer(db, true);
       setUploadStatus('saved');
       setTimeout(() => setUploadStatus(p => p === 'saved' ? 'idle' : p), 3000);

@@ -120,17 +120,18 @@ export function getWeekdayOfJalali(jy: number, jm: number, jd: number): number {
 }
 
 export function parseJalaliString(str: string): { jy: number; jm: number; jd: number } {
-  const normalized = normalizePersianDigits(str);
+  if (!str) return { jy: 1403, jm: 1, jd: 1 };
+  const normalized = normalizePersianDigits(str.toString()).replace(/-/g, '/');
   const parts = normalized.split('/');
   return {
-    jy: parseInt(parts[0] || '1405', 10),
-    jm: parseInt(parts[1] || '1', 10),
-    jd: parseInt(parts[2] || '1', 10)
+    jy: parseInt(parts[0] || '1403', 10) || 1403,
+    jm: parseInt(parts[1] || '1', 10) || 1,
+    jd: parseInt(parts[2] || '1', 10) || 1
   };
 }
 
-export function normalizePersianDigits(str: string): string {
-  if (!str) return '';
+export function normalizePersianDigits(str: any): string {
+  if (str === null || str === undefined) return '';
   const farsiDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
   let result = str.toString();
   for (let i = 0; i < 10; i++) {
