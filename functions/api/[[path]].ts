@@ -1,6 +1,9 @@
 import { calculateTermSessions, calculateTermSessionsWithHistory, getTodayJalali } from "../../src/utils/jalali";
 
 interface Env {
+  DB?: any;
+  COWORKING_D1?: any;
+  d1?: any;
   COWORKING_KV?: any;
   KV?: any;
 }
@@ -42,6 +45,7 @@ const DEFAULT_DB: DbState = {
 };
 
 let inMemoryDb: DbState | null = null;
+let d1Initialized = false;
 
 function recalculateAllTerms(db: DbState) {
   if (!db.terms || !Array.isArray(db.terms)) return;
@@ -165,11 +169,283 @@ function migrateAndNormalizeState(input: any): DbState {
   return cleanState;
 }
 
+function getD1Store(env: Env) {
+  return env.DB || env.COWORKING_D1 || env.d1 || null;
+}
+
 function getKvStore(env: Env) {
   return env.COWORKING_KV || env.KV || null;
 }
 
+async function ensureD1Tables(d1: any) {
+  if (d1Initialized) return;
+  try {
+    await d1.exec(`
+      CREATE TABLE IF NOT EXISTS config (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS shifts (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        week_days TEXT NOT NULL,
+        total_regular INTEGER NOT NULL DEFAULT 20,
+        total_premium INTEGER NOT NULL DEFAULT 5,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS members (
+        id TEXT PRIMARY KEY,
+        full_name TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS terms (
+        id TEXT PRIMARY KEY,
+        member_id TEXT NOT NULL,
+        shift_id TEXT NOT NULL,
+        start_date TEXT NOT NULL,
+        end_date TEXT NOT NULL,
+        sessions_count INTEGER NOT NULL DEFAULT 12,
+        desk_type TEXT NOT NULL DEFAULT 'regular',
+        sessions TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_terms_member ON terms(member_id);
+      CREATE INDEX IF NOT EXISTS idx_terms_shift ON terms(shift_id);
+
+      CREATE TABLE IF NOT EXISTS session_notes (
+        term_id TEXT NOT NULL,
+        date_str TEXT NOT NULL,
+        note TEXT NOT NULL,
+        PRIMARY KEY (term_id, date_str)
+      );
+
+      CREATE TABLE IF NOT EXISTS session_attendance (
+        term_id TEXT NOT NULL,
+        date_str TEXT NOT NULL,
+        status TEXT NOT NULL,
+        PRIMARY KEY (term_id, date_str)
+      );
+
+      CREATE TABLE IF NOT EXISTS calendar_overrides (
+        date_str TEXT PRIMARY KEY,
+        status TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS db_meta (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    d1Initialized = true;
+  } catch (err) {
+    console.error("D1 schema initialization error:", err);
+  }
+}
+
+async function readD1State(d1: any): Promise<DbState> {
+  await ensureD1Tables(d1);
+
+  const [configRows, shiftRows, memberRows, termRows, noteRows, attendanceRows, overrideRows, metaRow] = await Promise.all([
+    d1.prepare("SELECT key, value FROM config").all(),
+    d1.prepare("SELECT id, name, week_days, total_regular, total_premium FROM shifts").all(),
+    d1.prepare("SELECT id, full_name, phone FROM members").all(),
+    d1.prepare("SELECT id, member_id, shift_id, start_date, end_date, sessions_count, desk_type, sessions FROM terms").all(),
+    d1.prepare("SELECT term_id, date_str, note FROM session_notes").all(),
+    d1.prepare("SELECT term_id, date_str, status FROM session_attendance").all(),
+    d1.prepare("SELECT date_str, status FROM calendar_overrides").all(),
+    d1.prepare("SELECT value FROM db_meta WHERE key = 'version'").first(),
+  ]);
+
+  const configObj: any = { ...DEFAULT_DB.config };
+  if (configRows && configRows.results) {
+    for (const r of configRows.results) {
+      if (r.key === "totalRegularDesks") configObj.totalRegularDesks = Number(r.value);
+      else if (r.key === "totalPremiumDesks") configObj.totalPremiumDesks = Number(r.value);
+      else if (r.key === "academyName") configObj.academyName = r.value;
+      else if (r.key === "academyPhone") configObj.academyPhone = r.value;
+      else if (r.key === "academyAddress") configObj.academyAddress = r.value;
+      else if (r.key === "academyLogo") configObj.academyLogo = r.value;
+    }
+  }
+
+  const shifts = (shiftRows?.results || []).map((s: any) => ({
+    id: s.id,
+    name: s.name,
+    weekDays: typeof s.week_days === "string" ? JSON.parse(s.week_days) : (s.week_days || []),
+    totalRegular: typeof s.total_regular === "number" ? s.total_regular : 20,
+    totalPremium: typeof s.total_premium === "number" ? s.total_premium : 5,
+  }));
+
+  const members = (memberRows?.results || []).map((m: any) => ({
+    id: m.id,
+    fullName: m.full_name,
+    phone: m.phone,
+  }));
+
+  const terms = (termRows?.results || []).map((t: any) => ({
+    id: t.id,
+    memberId: t.member_id,
+    shiftId: t.shift_id,
+    startDate: t.start_date,
+    endDate: t.end_date,
+    sessionsCount: typeof t.sessions_count === "number" ? t.sessions_count : 12,
+    deskType: t.desk_type || "regular",
+    sessions: typeof t.sessions === "string" ? JSON.parse(t.sessions) : (t.sessions || []),
+  }));
+
+  const sessionNotes: Record<string, string> = {};
+  if (noteRows && noteRows.results) {
+    for (const n of noteRows.results) {
+      sessionNotes[`${n.term_id}_${n.date_str}`] = n.note;
+    }
+  }
+
+  const sessionAttendance: Record<string, string> = {};
+  if (attendanceRows && attendanceRows.results) {
+    for (const a of attendanceRows.results) {
+      sessionAttendance[`${a.term_id}_${a.date_str}`] = a.status;
+    }
+  }
+
+  const calendarOverrides: Record<string, "holiday" | "working"> = {};
+  if (overrideRows && overrideRows.results) {
+    for (const o of overrideRows.results) {
+      if (o.status === "holiday" || o.status === "working") {
+        calendarOverrides[o.date_str] = o.status;
+      }
+    }
+  }
+
+  const version = metaRow ? Number(metaRow.value) : 1;
+
+  const state: DbState = {
+    version,
+    config: configObj,
+    shifts,
+    members,
+    terms,
+    sessionNotes,
+    sessionAttendance,
+    calendarOverrides,
+  };
+
+  recalculateAllTerms(state);
+  return state;
+}
+
+async function writeFullStateToD1(d1: any, state: DbState): Promise<DbState> {
+  await ensureD1Tables(d1);
+  state.version = (state.version || 0) + 1;
+  const cleanState = migrateAndNormalizeState(state);
+  cleanState.version = state.version;
+
+  const batchStmts: any[] = [
+    d1.prepare("DELETE FROM config"),
+    d1.prepare("DELETE FROM shifts"),
+    d1.prepare("DELETE FROM members"),
+    d1.prepare("DELETE FROM terms"),
+    d1.prepare("DELETE FROM session_notes"),
+    d1.prepare("DELETE FROM session_attendance"),
+    d1.prepare("DELETE FROM calendar_overrides"),
+    d1.prepare("INSERT INTO db_meta (key, value) VALUES ('version', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(String(cleanState.version))
+  ];
+
+  for (const [k, v] of Object.entries(cleanState.config)) {
+    if (v !== undefined && v !== null) {
+      batchStmts.push(d1.prepare("INSERT INTO config (key, value) VALUES (?, ?)").bind(k, String(v)));
+    }
+  }
+
+  for (const s of cleanState.shifts) {
+    batchStmts.push(
+      d1.prepare("INSERT INTO shifts (id, name, week_days, total_regular, total_premium) VALUES (?, ?, ?, ?, ?)").bind(
+        s.id,
+        s.name,
+        JSON.stringify(s.weekDays || []),
+        s.totalRegular ?? 20,
+        s.totalPremium ?? 5
+      )
+    );
+  }
+
+  for (const m of cleanState.members) {
+    batchStmts.push(
+      d1.prepare("INSERT INTO members (id, full_name, phone) VALUES (?, ?, ?)").bind(
+        m.id,
+        m.fullName,
+        m.phone
+      )
+    );
+  }
+
+  for (const t of cleanState.terms) {
+    batchStmts.push(
+      d1.prepare("INSERT INTO terms (id, member_id, shift_id, start_date, end_date, sessions_count, desk_type, sessions) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").bind(
+        t.id,
+        t.memberId,
+        t.shiftId,
+        t.startDate,
+        t.endDate,
+        t.sessionsCount,
+        t.deskType || "regular",
+        JSON.stringify(t.sessions || [])
+      )
+    );
+  }
+
+  for (const [key, note] of Object.entries(cleanState.sessionNotes)) {
+    const parts = key.split("_");
+    if (parts.length >= 2) {
+      const termId = parts[0];
+      const dateStr = parts.slice(1).join("_");
+      batchStmts.push(
+        d1.prepare("INSERT INTO session_notes (term_id, date_str, note) VALUES (?, ?, ?)").bind(termId, dateStr, note)
+      );
+    }
+  }
+
+  for (const [key, status] of Object.entries(cleanState.sessionAttendance)) {
+    const parts = key.split("_");
+    if (parts.length >= 2) {
+      const termId = parts[0];
+      const dateStr = parts.slice(1).join("_");
+      batchStmts.push(
+        d1.prepare("INSERT INTO session_attendance (term_id, date_str, status) VALUES (?, ?, ?)").bind(termId, dateStr, status)
+      );
+    }
+  }
+
+  for (const [dateStr, status] of Object.entries(cleanState.calendarOverrides)) {
+    batchStmts.push(
+      d1.prepare("INSERT INTO calendar_overrides (date_str, status) VALUES (?, ?)").bind(dateStr, status)
+    );
+  }
+
+  const BATCH_SIZE = 80;
+  for (let i = 0; i < batchStmts.length; i += BATCH_SIZE) {
+    const chunk = batchStmts.slice(i, i + BATCH_SIZE);
+    await d1.batch(chunk);
+  }
+
+  return cleanState;
+}
+
 async function readDb(env: Env): Promise<DbState> {
+  const d1 = getD1Store(env);
+  if (d1) {
+    try {
+      return await readD1State(d1);
+    } catch (err) {
+      console.error("Cloudflare D1 read error:", err);
+    }
+  }
+
   const kv = getKvStore(env);
   if (kv) {
     try {
@@ -193,6 +469,15 @@ async function writeDb(env: Env, state: DbState): Promise<DbState> {
   state.version = (state.version || 0) + 1;
   const cleanState = migrateAndNormalizeState(state);
   cleanState.version = state.version;
+
+  const d1 = getD1Store(env);
+  if (d1) {
+    try {
+      return await writeFullStateToD1(d1, cleanState);
+    } catch (err) {
+      console.error("Cloudflare D1 write error:", err);
+    }
+  }
 
   const kv = getKvStore(env);
   if (kv) {
@@ -242,30 +527,42 @@ export async function onRequest(context: { request: Request; env: Env }): Promis
 
     // Version Check
     if (path === "/api/version") {
-      return jsonResponse({ version: "cf-pages-1.0.0" });
+      return jsonResponse({ version: "cf-pages-d1-1.0.0" });
     }
 
     // Secure Folder Status
     if (path === "/api/secure-folder-status") {
+      const d1 = getD1Store(env);
+      if (d1) {
+        return jsonResponse({
+          status: "ok",
+          d1Bound: true,
+          diskPath: "پایگاه داده ابری کلودفلر (Cloudflare D1 SQL Database)",
+          source: "cloudflare_d1",
+          timestamp: new Date().toISOString()
+        });
+      }
+
       const kv = getKvStore(env);
       if (kv) {
         return jsonResponse({
           status: "ok",
+          d1Bound: false,
           kvBound: true,
           diskPath: "پایگاه داده ابری کلودفلر (Cloudflare KV Persisted)",
           source: "cloudflare_kv",
           timestamp: new Date().toISOString()
         });
-      } else {
-        return jsonResponse({
-          status: "unbound",
-          kvBound: false,
-          diskPath: "حافظه موقت ایج (پایگاه داده KV متصل نشده است)",
-          source: "edge_memory",
-          error: "پایگاه داده KV در کلودفلر متصل نشده است.",
-          timestamp: new Date().toISOString()
-        });
       }
+
+      return jsonResponse({
+        status: "unbound",
+        d1Bound: false,
+        diskPath: "حافظه موقت ایج (پایگاه داده D1 کلودفلر متصل نشده است)",
+        source: "edge_memory",
+        error: "پایگاه داده D1 کلودفلر هنوز متصل نشده است.",
+        timestamp: new Date().toISOString()
+      });
     }
 
     // Data Read

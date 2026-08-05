@@ -435,8 +435,9 @@ export function BackupTab({
                 : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
             }`}
             title={`وضعیت پایگاه داده: ${
-              secureFolderStatus.status === 'ok' ? 'پایگاه داده KV متصل و ایمن است' : 
-              secureFolderStatus.status === 'unbound' ? 'پایگاه داده KV کلودفلر متصل نشده است (همگام‌سازی بین مرورگرها فعال نیست)' :
+              secureFolderStatus.status === 'ok' 
+                ? (secureFolderStatus.source === 'cloudflare_d1' ? 'پایگاه داده SQL کلودفلر (D1) متصل و ایمن است' : 'پایگاه داده متصل و فعال است')
+                : secureFolderStatus.status === 'unbound' ? 'پایگاه داده D1 کلودفلر متصل نشده است (همگام‌سازی ابری فعال نیست)' :
               secureFolderStatus.status === 'error' ? 'خطا در برقراری ارتباط با سرور' : 'در حال بررسی...'
             } (برای آزمایش مجدد کلیک کنید)`}
           >
@@ -447,7 +448,7 @@ export function BackupTab({
             }`} />
             <span className="text-[9px] font-black leading-none">
               {secureFolderStatus.status === 'ok' 
-                ? 'دیتابیس KV متصل' 
+                ? (secureFolderStatus.source === 'cloudflare_d1' ? 'دیتابیس D1 متصل' : 'دیتابیس متصل')
                 : secureFolderStatus.status === 'unbound'
                 ? 'دیتابیس متصل نیست' 
                 : secureFolderStatus.status === 'error'
@@ -521,7 +522,7 @@ export function BackupTab({
         {/* Scrollable Container with the Settings Table */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
 
-          {/* Cloudflare KV Unbound Warning & Guide Banner */}
+          {/* Cloudflare D1 Unbound Warning & Guide Banner */}
           {(secureFolderStatus.status === 'unbound' || secureFolderStatus.source === 'edge_memory') && (
             <div className="bg-amber-50/90 border border-amber-200/90 rounded-xl p-3.5 space-y-2.5 text-slate-800 text-xs">
               <div className="flex items-start gap-2.5">
@@ -530,27 +531,27 @@ export function BackupTab({
                 </div>
                 <div className="space-y-1 leading-relaxed">
                   <h3 className="font-extrabold text-amber-900 text-xs">
-                    ⚠️ عدم اتصال به پایگاه داده ابری (Cloudflare KV)
+                    ⚠️ عدم اتصال به پایگاه داده ابری (Cloudflare D1 SQL)
                   </h3>
                   <p className="text-[11px] text-amber-800 font-medium">
-                    اطلاعات ثبت‌شده هم‌اکنون فقط در حافظه محلی مرورگر ذخیره می‌شوند و بین مرورگرها یا دستگاه‌های مختلف همگام‌سازی (Sync) <strong>نمی‌شوند</strong>.
+                    اطلاعات ثبت‌شده هم‌اکنون به صورت ساختارمند ذخیره می‌شوند. برای همگام‌سازی ابری اصولی در کلودفلر D1 بین همه دستگاه‌ها، مراحل زیر را طی نمایید.
                   </p>
                 </div>
               </div>
 
               <div className="bg-white/80 border border-amber-200/60 rounded-lg p-3 space-y-1.5 text-[10.5px]">
-                <div className="font-bold text-amber-950">📌 راهنمای ۵ گام سریع برای اتصال دیتابیس رایگان کلودفلر (Cloudflare KV):</div>
+                <div className="font-bold text-amber-950">📌 راهنمای ۵ گام سریع برای اتصال دیتابیس SQL کلودفلر (Cloudflare D1):</div>
                 <ol className="list-decimal list-inside space-y-1 text-slate-700 pr-1 leading-normal font-medium">
                   <li>وارد پنل کلودفلر (<a href="https://dash.cloudflare.com" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline font-bold">dash.cloudflare.com</a>) شوید.</li>
-                  <li>از منوی سمت چپ به مسیر <strong>Storage & Databases</strong> ➔ <strong>KV</strong> بروید و یک KV Namespace به نام <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold text-amber-900">COWORKING_KV</code> بسازید.</li>
-                  <li>در پنل کلودفلر به بخش <strong>Workers & Pages</strong> رفته و روی پروژه <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold text-amber-900">coworkf</code> کلیک کنید.</li>
-                  <li>به تب <strong>Settings</strong> ➔ <strong>Functions</strong> ➔ <strong>KV namespace bindings</strong> رفته و روی <strong>Add binding</strong> کلیک کنید:
+                  <li>از منوی سمت چپ به مسیر <strong>Storage & Databases</strong> ➔ <strong>D1 Database</strong> بروید و یک دیتابیس به نام <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold text-amber-900">coworking_d1</code> بسازید.</li>
+                  <li>اسکیما را از روی فایل <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold text-amber-900">schema.sql</code> یا دستور <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold text-amber-900">wrangler d1 execute coworking_d1 --file=./schema.sql</code> اعمال کنید.</li>
+                  <li>در پنل کلودفلر به بخش <strong>Workers & Pages</strong> ➔ پروژه <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold text-amber-900">coworkf</code> ➔ <strong>Settings</strong> ➔ <strong>Functions</strong> ➔ <strong>D1 database bindings</strong> رفته و Add binding را بزنید:
                     <div className="mr-4 my-1 p-1.5 bg-amber-50 border border-amber-200 rounded font-mono text-[10px] space-y-0.5">
-                      <div>Variable name: <strong>COWORKING_KV</strong></div>
-                      <div>KV namespace: <strong>COWORKING_KV</strong> (انتخاب KV ایجادشده)</div>
+                      <div>Variable name: <strong>DB</strong></div>
+                      <div>D1 database: <strong>coworking_d1</strong></div>
                     </div>
                   </li>
-                  <li>پروژه را مجدداً Deploy کنید تا داده‌ها دائماً و بین همه دستگاه‌ها همگام شوند.</li>
+                  <li>پروژه را منتشر کنید. فایل‌های دانلود/آپلود پشتیبان JSON همچنان با بالاترین سرعت کار خواهند کرد.</li>
                 </ol>
               </div>
             </div>

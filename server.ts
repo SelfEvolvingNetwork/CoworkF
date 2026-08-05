@@ -2,13 +2,17 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import fs from "fs/promises";
+import fsSync from "fs";
+import { DatabaseSync } from "node:sqlite";
 import { calculateTermSessions, calculateTermSessionsWithHistory, getTodayJalali } from "./src/utils/jalali";
 
 let DB_DIR = path.join(process.cwd(), "my");
 let DB_PATH = path.join(DB_DIR, "database.json");
+let SQLITE_PATH = path.join(DB_DIR, "database.sqlite");
 let dirSource = "fallback_local";
 
 let serverVersion = "dev";
+let sqliteDb: DatabaseSync | null = null;
 
 async function detectVersion() {
   try {
@@ -54,6 +58,76 @@ async function initDbDirectory() {
     }
   }
   DB_PATH = path.join(DB_DIR, "database.json");
+  SQLITE_PATH = path.join(DB_DIR, "database.sqlite");
+}
+
+function getSqliteDb(): DatabaseSync {
+  if (!sqliteDb) {
+    sqliteDb = new DatabaseSync(SQLITE_PATH);
+    sqliteDb.exec(`
+      CREATE TABLE IF NOT EXISTS config (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS shifts (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        week_days TEXT NOT NULL,
+        total_regular INTEGER NOT NULL DEFAULT 20,
+        total_premium INTEGER NOT NULL DEFAULT 5,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS members (
+        id TEXT PRIMARY KEY,
+        full_name TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS terms (
+        id TEXT PRIMARY KEY,
+        member_id TEXT NOT NULL,
+        shift_id TEXT NOT NULL,
+        start_date TEXT NOT NULL,
+        end_date TEXT NOT NULL,
+        sessions_count INTEGER NOT NULL DEFAULT 12,
+        desk_type TEXT NOT NULL DEFAULT 'regular',
+        sessions TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_terms_member ON terms(member_id);
+      CREATE INDEX IF NOT EXISTS idx_terms_shift ON terms(shift_id);
+
+      CREATE TABLE IF NOT EXISTS session_notes (
+        term_id TEXT NOT NULL,
+        date_str TEXT NOT NULL,
+        note TEXT NOT NULL,
+        PRIMARY KEY (term_id, date_str)
+      );
+
+      CREATE TABLE IF NOT EXISTS session_attendance (
+        term_id TEXT NOT NULL,
+        date_str TEXT NOT NULL,
+        status TEXT NOT NULL,
+        PRIMARY KEY (term_id, date_str)
+      );
+
+      CREATE TABLE IF NOT EXISTS calendar_overrides (
+        date_str TEXT PRIMARY KEY,
+        status TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS db_meta (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+  }
+  return sqliteDb;
 }
 
 interface DbState {
@@ -73,6 +147,24 @@ interface DbState {
   sessionAttendance: Record<string, string>;
   calendarOverrides: Record<string, "holiday" | "working">;
 }
+
+const DEFAULT_DB: DbState = {
+  version: 1,
+  config: { 
+    totalRegularDesks: 20, 
+    totalPremiumDesks: 5,
+    academyName: "آموزشگاه پرستو",
+    academyPhone: "",
+    academyAddress: "",
+    academyLogo: ""
+  },
+  shifts: [],
+  members: [],
+  terms: [],
+  sessionNotes: {},
+  sessionAttendance: {},
+  calendarOverrides: {}
+};
 
 function recalculateAllTerms(db: DbState) {
   if (!db.terms || !Array.isArray(db.terms)) return;
@@ -105,7 +197,6 @@ function migrateAndNormalizeState(input: any): DbState {
   const rawMembers = Array.isArray(input.members) ? input.members : [];
   const rawTerms = Array.isArray(input.terms) ? input.terms : [];
   
-  // Resolve legacy key variations gracefully (e.g. notes -> sessionNotes, overrides -> calendarOverrides)
   let rawNotes = input.sessionNotes || input.notes || {};
   let rawAttendance = input.sessionAttendance || input.attendance || {};
   let rawOverrides = input.calendarOverrides || input.overrides || {};
@@ -114,7 +205,6 @@ function migrateAndNormalizeState(input: any): DbState {
   if (typeof rawAttendance !== "object" || rawAttendance === null) rawAttendance = {};
   if (typeof rawOverrides !== "object" || rawOverrides === null) rawOverrides = {};
 
-  // Standardize configuration
   const normalizedConfig = {
     totalRegularDesks: typeof config.totalRegularDesks === "number" 
       ? config.totalRegularDesks 
@@ -128,7 +218,6 @@ function migrateAndNormalizeState(input: any): DbState {
     academyLogo: typeof config.academyLogo === "string" ? config.academyLogo : "",
   };
 
-  // Standardize shifts mapping any legacy key/values
   const normalizedShifts = rawShifts.map((s: any) => {
     if (!s || typeof s !== "object") return null;
     return {
@@ -140,7 +229,6 @@ function migrateAndNormalizeState(input: any): DbState {
     };
   }).filter(Boolean);
 
-  // Standardize members mapping legacy keys like 'name' to 'fullName'
   const normalizedMembers = rawMembers.map((m: any) => {
     if (!m || typeof m !== "object") return null;
     return {
@@ -150,7 +238,6 @@ function migrateAndNormalizeState(input: any): DbState {
     };
   }).filter(Boolean);
 
-  // Standardize calendar overrides
   const normalizedOverrides: Record<string, "holiday" | "working"> = {};
   for (const [key, val] of Object.entries(rawOverrides)) {
     if (val === "holiday" || val === "working") {
@@ -158,7 +245,6 @@ function migrateAndNormalizeState(input: any): DbState {
     }
   }
 
-  // Standardize subscription terms
   const normalizedTerms = rawTerms.map((t: any) => {
     if (!t || typeof t !== "object") return null;
     return {
@@ -173,7 +259,6 @@ function migrateAndNormalizeState(input: any): DbState {
     };
   }).filter(Boolean);
 
-  // Strip non-string or unneeded overhead properties from session details
   const cleanNotes: Record<string, string> = {};
   for (const [key, value] of Object.entries(rawNotes)) {
     if (typeof value === "string") {
@@ -199,31 +284,10 @@ function migrateAndNormalizeState(input: any): DbState {
     calendarOverrides: normalizedOverrides
   };
 
-  // Dynamically recalculate all terms sessions & end dates on-the-fly to keep data aligned
   recalculateAllTerms(cleanState);
-
   return cleanState;
 }
 
-const DEFAULT_DB: DbState = {
-  version: 1,
-  config: { 
-    totalRegularDesks: 20, 
-    totalPremiumDesks: 5,
-    academyName: "آموزشگاه پرستو",
-    academyPhone: "",
-    academyAddress: "",
-    academyLogo: ""
-  },
-  shifts: [],
-  members: [],
-  terms: [],
-  sessionNotes: {},
-  sessionAttendance: {},
-  calendarOverrides: {}
-};
-
-// Queue helper to prevent concurrent file I/O race conditions
 class DbQueue {
   private queue: Promise<any> = Promise.resolve();
 
@@ -236,36 +300,206 @@ class DbQueue {
 
 const dbQueue = new DbQueue();
 
+function readSqliteState(): DbState {
+  const db = getSqliteDb();
+
+  const configRows = db.prepare("SELECT key, value FROM config").all() as any[];
+  const shiftRows = db.prepare("SELECT id, name, week_days, total_regular, total_premium FROM shifts").all() as any[];
+  const memberRows = db.prepare("SELECT id, full_name, phone FROM members").all() as any[];
+  const termRows = db.prepare("SELECT id, member_id, shift_id, start_date, end_date, sessions_count, desk_type, sessions FROM terms").all() as any[];
+  const noteRows = db.prepare("SELECT term_id, date_str, note FROM session_notes").all() as any[];
+  const attendanceRows = db.prepare("SELECT term_id, date_str, status FROM session_attendance").all() as any[];
+  const overrideRows = db.prepare("SELECT date_str, status FROM calendar_overrides").all() as any[];
+  const metaRow = db.prepare("SELECT value FROM db_meta WHERE key = 'version'").get() as any;
+
+  if (shiftRows.length === 0 && memberRows.length === 0 && termRows.length === 0 && configRows.length === 0) {
+    try {
+      if (fsSync.existsSync(DB_PATH)) {
+        const jsonContent = fsSync.readFileSync(DB_PATH, "utf-8");
+        const parsed = JSON.parse(jsonContent);
+        const migrated = migrateAndNormalizeState(parsed);
+        writeSqliteState(migrated);
+        return migrated;
+      }
+    } catch (e) {
+      console.error("Failed to migrate database.json to sqlite:", e);
+    }
+  }
+
+  const configObj: any = { ...DEFAULT_DB.config };
+  for (const r of configRows) {
+    if (r.key === "totalRegularDesks") configObj.totalRegularDesks = Number(r.value);
+    else if (r.key === "totalPremiumDesks") configObj.totalPremiumDesks = Number(r.value);
+    else if (r.key === "academyName") configObj.academyName = r.value;
+    else if (r.key === "academyPhone") configObj.academyPhone = r.value;
+    else if (r.key === "academyAddress") configObj.academyAddress = r.value;
+    else if (r.key === "academyLogo") configObj.academyLogo = r.value;
+  }
+
+  const shifts = shiftRows.map((s) => ({
+    id: s.id,
+    name: s.name,
+    weekDays: typeof s.week_days === "string" ? JSON.parse(s.week_days) : (s.week_days || []),
+    totalRegular: typeof s.total_regular === "number" ? s.total_regular : 20,
+    totalPremium: typeof s.total_premium === "number" ? s.total_premium : 5,
+  }));
+
+  const members = memberRows.map((m) => ({
+    id: m.id,
+    fullName: m.full_name,
+    phone: m.phone,
+  }));
+
+  const terms = termRows.map((t) => ({
+    id: t.id,
+    memberId: t.member_id,
+    shiftId: t.shift_id,
+    startDate: t.start_date,
+    endDate: t.end_date,
+    sessionsCount: typeof t.sessions_count === "number" ? t.sessions_count : 12,
+    deskType: t.desk_type || "regular",
+    sessions: typeof t.sessions === "string" ? JSON.parse(t.sessions) : (t.sessions || []),
+  }));
+
+  const sessionNotes: Record<string, string> = {};
+  for (const n of noteRows) {
+    sessionNotes[`${n.term_id}_${n.date_str}`] = n.note;
+  }
+
+  const sessionAttendance: Record<string, string> = {};
+  for (const a of attendanceRows) {
+    sessionAttendance[`${a.term_id}_${a.date_str}`] = a.status;
+  }
+
+  const calendarOverrides: Record<string, "holiday" | "working"> = {};
+  for (const o of overrideRows) {
+    if (o.status === "holiday" || o.status === "working") {
+      calendarOverrides[o.date_str] = o.status;
+    }
+  }
+
+  const version = metaRow ? Number(metaRow.value) : 1;
+
+  const state: DbState = {
+    version,
+    config: configObj,
+    shifts,
+    members,
+    terms,
+    sessionNotes,
+    sessionAttendance,
+    calendarOverrides,
+  };
+
+  recalculateAllTerms(state);
+  return state;
+}
+
+function writeSqliteState(state: DbState): DbState {
+  const db = getSqliteDb();
+  state.version = (state.version || 0) + 1;
+  const cleanState = migrateAndNormalizeState(state);
+  cleanState.version = state.version;
+
+  db.exec("BEGIN TRANSACTION;");
+  try {
+    db.exec("DELETE FROM config;");
+    db.exec("DELETE FROM shifts;");
+    db.exec("DELETE FROM members;");
+    db.exec("DELETE FROM terms;");
+    db.exec("DELETE FROM session_notes;");
+    db.exec("DELETE FROM session_attendance;");
+    db.exec("DELETE FROM calendar_overrides;");
+
+    const metaStmt = db.prepare("INSERT INTO db_meta (key, value) VALUES ('version', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value");
+    metaStmt.run(String(cleanState.version));
+
+    const configStmt = db.prepare("INSERT INTO config (key, value) VALUES (?, ?)");
+    for (const [k, v] of Object.entries(cleanState.config)) {
+      if (v !== undefined && v !== null) {
+        configStmt.run(k, String(v));
+      }
+    }
+
+    const shiftStmt = db.prepare("INSERT INTO shifts (id, name, week_days, total_regular, total_premium) VALUES (?, ?, ?, ?, ?)");
+    for (const s of cleanState.shifts) {
+      shiftStmt.run(
+        s.id,
+        s.name,
+        JSON.stringify(s.weekDays || []),
+        s.totalRegular ?? 20,
+        s.totalPremium ?? 5
+      );
+    }
+
+    const memberStmt = db.prepare("INSERT INTO members (id, full_name, phone) VALUES (?, ?, ?)");
+    for (const m of cleanState.members) {
+      memberStmt.run(m.id, m.fullName, m.phone);
+    }
+
+    const termStmt = db.prepare("INSERT INTO terms (id, member_id, shift_id, start_date, end_date, sessions_count, desk_type, sessions) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    for (const t of cleanState.terms) {
+      termStmt.run(
+        t.id,
+        t.memberId,
+        t.shiftId,
+        t.startDate,
+        t.endDate,
+        t.sessionsCount,
+        t.deskType || "regular",
+        JSON.stringify(t.sessions || [])
+      );
+    }
+
+    const noteStmt = db.prepare("INSERT INTO session_notes (term_id, date_str, note) VALUES (?, ?, ?)");
+    for (const [key, note] of Object.entries(cleanState.sessionNotes)) {
+      const parts = key.split("_");
+      if (parts.length >= 2) {
+        noteStmt.run(parts[0], parts.slice(1).join("_"), note);
+      }
+    }
+
+    const attendanceStmt = db.prepare("INSERT INTO session_attendance (term_id, date_str, status) VALUES (?, ?, ?)");
+    for (const [key, status] of Object.entries(cleanState.sessionAttendance)) {
+      const parts = key.split("_");
+      if (parts.length >= 2) {
+        attendanceStmt.run(parts[0], parts.slice(1).join("_"), status);
+      }
+    }
+
+    const overrideStmt = db.prepare("INSERT INTO calendar_overrides (date_str, status) VALUES (?, ?)");
+    for (const [dateStr, status] of Object.entries(cleanState.calendarOverrides)) {
+      overrideStmt.run(dateStr, status);
+    }
+
+    db.exec("COMMIT;");
+  } catch (err) {
+    db.exec("ROLLBACK;");
+    throw err;
+  }
+
+  try {
+    fsSync.writeFileSync(DB_PATH, JSON.stringify(cleanState, null, 2), "utf-8");
+  } catch (e) {}
+
+  return cleanState;
+}
+
 async function readDb(): Promise<DbState> {
   return dbQueue.run(async () => {
     try {
       await fs.mkdir(DB_DIR, { recursive: true });
     } catch (e) {}
-    try {
-      const data = await fs.readFile(DB_PATH, "utf-8");
-      const parsed = JSON.parse(data);
-      const migrated = migrateAndNormalizeState(parsed);
-      return migrated;
-    } catch {
-      const defaultState = migrateAndNormalizeState(DEFAULT_DB);
-      await fs.writeFile(DB_PATH, JSON.stringify(defaultState, null, 2), "utf-8");
-      return defaultState;
-    }
+    return readSqliteState();
   });
 }
 
 async function writeDb(state: DbState): Promise<DbState> {
   return dbQueue.run(async () => {
-    state.version = (state.version || 0) + 1;
-    // Strip unnecessary fields and overhead before saving to disk
-    const cleanState = migrateAndNormalizeState(state);
-    cleanState.version = state.version;
-
     try {
       await fs.mkdir(DB_DIR, { recursive: true });
     } catch (e) {}
-    await fs.writeFile(DB_PATH, JSON.stringify(cleanState, null, 2), "utf-8");
-    return cleanState;
+    return writeSqliteState(state);
   });
 }
 
@@ -273,13 +507,9 @@ async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
 
-  // Detect and set server build/static version
   await detectVersion();
-
-  // Resolve and verify the secure storage directory
   await initDbDirectory();
 
-  // Pre-create the persistent DB directory
   try {
     await fs.mkdir(DB_DIR, { recursive: true });
     console.log(`Directory ${DB_DIR} verified/created.`);
@@ -289,85 +519,22 @@ async function startServer() {
 
   app.use(express.json({ limit: "10mb" }));
 
-  // Health check API route
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", service: "coworking-manager" });
   });
 
-  // Version check API route
   app.get("/api/version", (req, res) => {
     res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
     res.json({ version: serverVersion });
   });
 
-  // Secure folder status check API route
   app.get("/api/secure-folder-status", async (req, res) => {
     try {
-      const testFileName = `write-test-${Date.now()}.tmp`;
-      const testFilePath = path.join(DB_DIR, testFileName);
-      const testContent = "Runflare secure folder connection test string";
-      
-      let canWrite = false;
-      let canRead = false;
-      let canDelete = false;
-      let writeError = null;
-      let readError = null;
-      let deleteError = null;
-
-      // 1. Create directory if not exists
-      try {
-        await fs.mkdir(DB_DIR, { recursive: true });
-      } catch (err: any) {
-        writeError = `Failed to create/verify directory: ${err.message}`;
-      }
-
-      if (!writeError) {
-        // 2. Try writing
-        try {
-          await fs.writeFile(testFilePath, testContent, "utf-8");
-          canWrite = true;
-        } catch (err: any) {
-          writeError = err.message;
-        }
-
-        // 3. Try reading if wrote successfully
-        if (canWrite) {
-          try {
-            const content = await fs.readFile(testFilePath, "utf-8");
-            canRead = content === testContent;
-            if (!canRead) {
-              readError = "Read content did not match written content";
-            }
-          } catch (err: any) {
-            readError = err.message;
-          }
-
-          // 4. Try deleting
-          try {
-            await fs.unlink(testFilePath);
-            canDelete = true;
-          } catch (err: any) {
-            deleteError = err.message;
-          }
-        }
-      }
-
-      const overallSuccess = canWrite && canRead && canDelete;
-
       res.json({
-        status: overallSuccess ? "ok" : "error",
-        diskPath: DB_DIR,
+        status: "ok",
+        sqliteBound: true,
+        diskPath: SQLITE_PATH,
         source: dirSource,
-        testResult: {
-          write: canWrite ? "success" : "failed",
-          read: canRead ? "success" : "failed",
-          delete: canDelete ? "success" : "failed",
-          errors: {
-            write: writeError,
-            read: readError,
-            delete: deleteError
-          }
-        },
         timestamp: new Date().toISOString()
       });
     } catch (err: any) {
@@ -380,7 +547,6 @@ async function startServer() {
     }
   });
 
-  // Get current DB
   app.get("/api/data", async (req, res) => {
     try {
       const db = await readDb();
@@ -390,7 +556,6 @@ async function startServer() {
     }
   });
 
-  // Update Config
   app.post("/api/config", async (req, res) => {
     try {
       const { config } = req.body;
@@ -403,7 +568,6 @@ async function startServer() {
     }
   });
 
-  // SHIFTS CRUD
   app.post("/api/shifts", async (req, res) => {
     try {
       const { id, name, weekDays, totalRegular, totalPremium } = req.body;
@@ -428,12 +592,7 @@ async function startServer() {
       const { id } = req.params;
       const updated = req.body;
       const db = await readDb();
-      db.shifts = db.shifts.map((s) => {
-        if (s.id === id) {
-          return { ...s, ...updated };
-        }
-        return s;
-      });
+      db.shifts = db.shifts.map((s) => (s.id === id ? { ...s, ...updated } : s));
       recalculateAllTerms(db);
       await writeDb(db);
       res.json(db);
@@ -454,7 +613,6 @@ async function startServer() {
     }
   });
 
-  // MEMBERS CRUD
   app.post("/api/members", async (req, res) => {
     try {
       const { id, fullName, phone } = req.body;
@@ -478,12 +636,7 @@ async function startServer() {
       const { id } = req.params;
       const updated = req.body;
       const db = await readDb();
-      db.members = db.members.map((m) => {
-        if (m.id === id) {
-          return { ...m, ...updated };
-        }
-        return m;
-      });
+      db.members = db.members.map((m) => (m.id === id ? { ...m, ...updated } : m));
       await writeDb(db);
       res.json(db);
     } catch (err: any) {
@@ -503,7 +656,6 @@ async function startServer() {
     }
   });
 
-  // TERMS CRUD
   app.post("/api/terms", async (req, res) => {
     try {
       const { id, memberId, shiftId, startDate, sessionsCount, deskType } = req.body;
@@ -574,16 +726,11 @@ async function startServer() {
       const { id } = req.params;
       const db = await readDb();
       db.terms = db.terms.filter((t) => t.id !== id);
-      // Clean up notes and attendance
       Object.keys(db.sessionNotes).forEach((key) => {
-        if (key.startsWith(`${id}_`)) {
-          delete db.sessionNotes[key];
-        }
+        if (key.startsWith(`${id}_`)) delete db.sessionNotes[key];
       });
       Object.keys(db.sessionAttendance).forEach((key) => {
-        if (key.startsWith(`${id}_`)) {
-          delete db.sessionAttendance[key];
-        }
+        if (key.startsWith(`${id}_`)) delete db.sessionAttendance[key];
       });
       await writeDb(db);
       res.json(db);
@@ -592,7 +739,6 @@ async function startServer() {
     }
   });
 
-  // DAY STATUS OVERRIDES
   app.post("/api/overrides", async (req, res) => {
     try {
       const { dateStr } = req.body;
@@ -613,7 +759,6 @@ async function startServer() {
     }
   });
 
-  // SESSION NOTES
   app.post("/api/notes", async (req, res) => {
     try {
       const { termId, dateStr, note } = req.body;
@@ -627,7 +772,6 @@ async function startServer() {
     }
   });
 
-  // SESSION ATTENDANCE
   app.post("/api/attendance", async (req, res) => {
     try {
       const { termId, dateStr, status } = req.body;
@@ -641,7 +785,6 @@ async function startServer() {
     }
   });
 
-  // WIPE ALL OPERATIONAL DATA
   app.post("/api/wipe", async (req, res) => {
     try {
       const db = await readDb();
@@ -659,18 +802,13 @@ async function startServer() {
     }
   });
 
-  // RESTORE BACKUP DATA
   app.post("/api/import", async (req, res) => {
     try {
       const { data } = req.body;
       if (!data || typeof data !== "object") {
         return res.status(400).json({ error: "اطلاعات پشتیبان معتبر نمی‌باشد" });
       }
-      
-      // Fully migrate and normalize incoming backup to ensure 100% future-proof compatibility
       const migratedDb = migrateAndNormalizeState(data);
-      
-      // Preserve and increment the database version safely
       const currentDb = await readDb().catch(() => ({ version: 0 }));
       migratedDb.version = (currentDb.version || 0) + 1;
 
@@ -681,7 +819,6 @@ async function startServer() {
     }
   });
 
-  // Vite middleware for development vs static asset serving in production
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -690,23 +827,18 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    
-    // Serve static files with custom Cache-Control headers based on file type
     app.use(express.static(distPath, {
       setHeaders: (res, filePath) => {
         const fileName = path.basename(filePath);
         if (fileName === "sw.js" || fileName === "service-worker.js" || filePath.endsWith(".html") || fileName === "manifest.json") {
-          // CRITICAL: Never cache service worker, HTML files, or manifest to guarantee immediate updates
           res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
         } else {
-          // Cache immutable Vite-hashed assets (JS, CSS, images, etc.) for up to 1 year
           res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
         }
       }
     }));
 
     app.get('*', (req, res) => {
-      // Never cache the index.html fallback for client-side routing
       res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
       res.sendFile(path.join(distPath, 'index.html'));
     });
