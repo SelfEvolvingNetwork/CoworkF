@@ -9,12 +9,16 @@ command = "npm run build"
 directory = "./dist"
 not_found_handling = "single-page-application"
 
-# Cloudflare D1 Database binding
-# To connect D1 in Cloudflare Pages / Workers:
-# 1. Run: npx wrangler d1 create coworking_d1
-# 2. Paste the generated database_id below OR bind 'DB' in Cloudflare Pages Dashboard
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "coworking_d1"
-# database_id = "YOUR_D1_DATABASE_ID"
+[[durable_objects.bindings]]
+name = "COWORKING_DO"
+class_name = "CoworkingDO"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["CoworkingDO"]
+
+# Optional: Cloudflare KV Namespace binding for fallback
+# [[kv_namespaces]]
+# binding = "COWORKING_KV"
+# id = "YOUR_KV_NAMESPACE_ID"
 

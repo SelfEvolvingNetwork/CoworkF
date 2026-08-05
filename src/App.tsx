@@ -42,8 +42,6 @@ export default function App() {
     manualSync,
     uploadStatus,
     queueCount,
-    d1Status,
-    fetchD1Status,
   } = useCoworkingState();
 
   const [selectedMemberId, setSelectedMemberId] = React.useState<string | null>(null);
@@ -134,7 +132,7 @@ export default function App() {
 
         const response = await fetch(`/api/version?t=${Date.now()}`);
         if (!response.ok) return;
-        const data = await response.json();
+        const data = (await response.json()) as any;
         const serverVersion = data.version;
         if (!serverVersion) return;
 
@@ -295,7 +293,6 @@ export default function App() {
         queueCount={queueCount}
         academyName={config?.academyName}
         academyLogo={config?.academyLogo}
-        d1Status={d1Status}
       />
 
       {/* 2. Main Content Container on the LEFT */}
@@ -403,8 +400,6 @@ export default function App() {
               saveSessionAttendance={saveSessionAttendance}
               importBackupData={importBackupData}
               wipeAllData={wipeAllData}
-              d1Status={d1Status}
-              fetchD1Status={fetchD1Status}
             />
           </div>
         </div>

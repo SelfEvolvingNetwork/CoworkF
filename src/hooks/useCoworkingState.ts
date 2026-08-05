@@ -8,24 +8,6 @@ export interface DialogError {
   message: string;
 }
 
-export interface D1StatusInfo {
-  status: 'ok' | 'unbound' | 'error' | 'loading' | 'uninitialized';
-  d1Bound: boolean;
-  diskPath: string;
-  source: string;
-  tableCounts?: {
-    members: number;
-    shifts: number;
-    terms: number;
-    config: number;
-    sessionNotes?: number;
-    sessionAttendance?: number;
-    calendarOverrides?: number;
-  };
-  error?: string;
-  lastError?: string;
-}
-
 export function useCoworkingState() {
   const [activeTab, setActiveTab] = useState<'calendar' | 'reports' | 'profile' | 'shifts' | 'backup'>('reports');
 
@@ -49,53 +31,6 @@ export function useCoworkingState() {
     title: '',
     message: '',
   });
-
-  const [d1Status, setD1Status] = useState<D1StatusInfo>({
-    status: 'uninitialized',
-    d1Bound: false,
-    diskPath: '',
-    source: ''
-  });
-
-  const fetchD1Status = async () => {
-    try {
-      const res = await fetch("/api/secure-folder-status?t=" + Date.now());
-      if (!res.ok) {
-        throw new Error(`خطای پاسخ سرور: ${res.status}`);
-      }
-      const contentType = res.headers.get("content-type") || "";
-      if (!contentType.includes("application/json")) {
-        setD1Status({
-          status: 'ok',
-          d1Bound: false,
-          diskPath: 'پایگاه داده محلی مرورگر (Local Storage)',
-          source: 'local_storage'
-        });
-        return;
-      }
-      const data = await res.json();
-      setD1Status({
-        status: data.status,
-        d1Bound: !!data.d1Bound,
-        diskPath: data.diskPath || 'پایگاه داده ابری کلودفلر',
-        source: data.source || 'cloudflare',
-        tableCounts: data.tableCounts,
-        error: data.error || undefined,
-        lastError: data.lastError || undefined
-      });
-      if (data.status === 'error' || data.lastError) {
-        setUploadStatus('error');
-      }
-    } catch (err: any) {
-      setD1Status({
-        status: 'error',
-        d1Bound: false,
-        diskPath: 'پایگاه داده محلی (عدم پاسخ سرور)',
-        source: 'local_storage_fallback',
-        error: err.message || 'خطا در برقراری ارتباط با سرور'
-      });
-    }
-  };
 
   const serverVersionRef = useRef<number>(0);
 
@@ -127,7 +62,7 @@ export function useCoworkingState() {
         if (!res.ok) {
           throw new Error(`Server returned ${res.status}`);
         }
-        const data = await res.json();
+        const data = (await res.json()) as any;
         const db = (op.type === 'addMember' || op.type === 'addTerm') ? data.db : data;
 
         syncQueueRef.current.shift();
@@ -136,7 +71,6 @@ export function useCoworkingState() {
         if (syncQueueRef.current.length === 0) {
           syncWithServer(db, true);
           setUploadStatus('saved');
-          fetchD1Status();
           setTimeout(() => {
             setUploadStatus(p => p === 'saved' ? 'idle' : p);
           }, 3000);
@@ -144,7 +78,6 @@ export function useCoworkingState() {
       } catch (err) {
         console.error("Failed to process queue operation:", err, op);
         setUploadStatus('error');
-        fetchD1Status();
         isProcessingQueueRef.current = false;
         
         // Wait and retry in 5 seconds
@@ -195,7 +128,6 @@ export function useCoworkingState() {
   });
 
   const manualSync = async (silent = false): Promise<boolean> => {
-    fetchD1Status();
     if (syncQueueRef.current.length > 0) {
       return false; // Skip sync if there are pending local operations to avoid overwrites
     }
@@ -209,7 +141,7 @@ export function useCoworkingState() {
         }
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+      const data = (await res.json()) as any;
       syncWithServer(data, true); // force state sync to guarantee latest server content
       const now = new Date();
       setLastSyncedTime(now.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
@@ -230,7 +162,6 @@ export function useCoworkingState() {
 
   // 2. Initial load (Try server API first, fallback to localStorage if unreachable)
   useEffect(() => {
-    fetchD1Status();
     const fetchInitial = async () => {
       try {
         const res = await fetch(`/api/data?t=${Date.now()}`, {
@@ -241,7 +172,7 @@ export function useCoworkingState() {
           }
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
+        const data = (await res.json()) as any;
         syncWithServer(data);
         const now = new Date();
         setLastSyncedTime(now.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
@@ -757,9 +688,6 @@ export function useCoworkingState() {
     saveSessionAttendance,
     importBackupData,
     wipeAllData,
-
-    d1Status,
-    fetchD1Status,
 
     dialogError,
     closeErrorDialog,
