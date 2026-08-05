@@ -10,10 +10,13 @@ directory = "./dist"
 not_found_handling = "single-page-application"
 
 # Cloudflare D1 Database binding
-[[d1_databases]]
-binding = "DB"
-database_name = "coworking_d1"
-database_id = "COWORKING_D1_ID"
+# To connect D1 in Cloudflare Pages / Workers:
+# 1. Run: npx wrangler d1 create coworking_d1
+# 2. Paste the generated database_id below OR bind 'DB' in Cloudflare Pages Dashboard
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "coworking_d1"
+# database_id = "YOUR_D1_DATABASE_ID"
 
 # Optional: Cloudflare KV Namespace binding for persistent storage
 # [[kv_namespaces]]
