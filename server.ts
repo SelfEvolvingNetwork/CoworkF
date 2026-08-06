@@ -178,14 +178,14 @@ function migrateAndNormalizeState(input: any): DbState {
   const cleanNotes: Record<string, string> = {};
   for (const [key, value] of Object.entries(rawNotes)) {
     if (typeof value === "string" && value.trim().length > 0) {
-      if (key.includes('_')) {
-        const parts = key.toString().split('_');
-        let termId = parts[0];
+      const lastUnderscore = key.toString().lastIndexOf('_');
+      if (lastUnderscore !== -1) {
+        let termId = key.toString().substring(0, lastUnderscore);
+        let dateStr = key.toString().substring(lastUnderscore + 1).replace(/-/g, '/');
         if (termId.startsWith('term/')) termId = termId.replace('term/', 'term-');
         if (termId.startsWith('member/')) termId = termId.replace('member/', 'member-');
         if (termId.startsWith('shift/')) termId = termId.replace('shift/', 'shift-');
-        const dateStr = parts.slice(1).join('_').replace(/-/g, '/');
-        cleanNotes[`${termId}_${dateStr}`] = value;
+        cleanNotes[`${termId}_${dateStr}`] = value.trim();
       }
     }
   }
@@ -193,13 +193,13 @@ function migrateAndNormalizeState(input: any): DbState {
   const cleanAttendance: Record<string, string> = {};
   for (const [key, value] of Object.entries(rawAttendance)) {
     if (typeof value === "string" && (value === 'present' || value === 'absent')) {
-      if (key.includes('_')) {
-        const parts = key.toString().split('_');
-        let termId = parts[0];
+      const lastUnderscore = key.toString().lastIndexOf('_');
+      if (lastUnderscore !== -1) {
+        let termId = key.toString().substring(0, lastUnderscore);
+        let dateStr = key.toString().substring(lastUnderscore + 1).replace(/-/g, '/');
         if (termId.startsWith('term/')) termId = termId.replace('term/', 'term-');
         if (termId.startsWith('member/')) termId = termId.replace('member/', 'member-');
         if (termId.startsWith('shift/')) termId = termId.replace('shift/', 'shift-');
-        const dateStr = parts.slice(1).join('_').replace(/-/g, '/');
         cleanAttendance[`${termId}_${dateStr}`] = value;
       }
     }
@@ -661,8 +661,8 @@ async function startServer() {
       } else {
         delete db.sessionNotes[key];
       }
-      await writeDb(db);
-      res.json(db);
+      const saved = await writeDb(db);
+      res.json(saved);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -681,8 +681,8 @@ async function startServer() {
         delete db.sessionAttendance[key];
       }
       recalculateAllTerms(db);
-      await writeDb(db);
-      res.json(db);
+      const saved = await writeDb(db);
+      res.json(saved);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
