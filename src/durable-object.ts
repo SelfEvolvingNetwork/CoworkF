@@ -229,19 +229,76 @@ export class CoworkingDO {
     return defaultState;
   }
 
+  async broadcastState(db: DbState) {
+    const msg = JSON.stringify({ type: "STATE_UPDATED", db });
+    for (const ws of this.ctx.getWebSockets()) {
+      try {
+        ws.send(msg);
+      } catch (e) {
+        // Ignore dead sockets
+      }
+    }
+  }
+
   async writeDb(state: DbState): Promise<DbState> {
     state.version = (state.version || 0) + 1;
     const cleanState = migrateAndNormalizeState(state);
     cleanState.version = state.version;
     await this.ctx.storage.put("database_state", cleanState);
     this.inMemoryState = cleanState;
+
+    // Real-time broadcast to all connected WebSocket clients
+    await this.broadcastState(cleanState);
+
     return cleanState;
+  }
+
+  // Cloudflare Durable Objects WebSocket Hibernation Event Handlers
+  async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer) {
+    try {
+      const text = typeof message === "string" ? message : new TextDecoder().decode(message);
+      const parsed = JSON.parse(text);
+      if (parsed.type === "PING") {
+        ws.send(JSON.stringify({ type: "PONG" }));
+      } else if (parsed.type === "GET_STATE") {
+        const db = await this.readDb();
+        ws.send(JSON.stringify({ type: "STATE_UPDATED", db }));
+      }
+    } catch (e) {
+      // Ignore invalid messages
+    }
+  }
+
+  async webSocketClose(ws: WebSocket, code: number, reason: string, wasClean: boolean) {
+    try {
+      ws.close(code, reason);
+    } catch (e) {}
+  }
+
+  async webSocketError(ws: WebSocket, error: any) {
+    try {
+      ws.close();
+    } catch (e) {}
   }
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
     const method = request.method;
+
+    // Handle WebSocket Connection Requests
+    if (request.headers.get("Upgrade") === "websocket" || path === "/api/ws") {
+      const pair = new WebSocketPair();
+      const [client, server] = Object.values(pair);
+
+      this.ctx.acceptWebSocket(server);
+
+      // Send initial state upon connection
+      const currentDb = await this.readDb();
+      server.send(JSON.stringify({ type: "INIT", db: currentDb }));
+
+      return new Response(null, { status: 101, webSocket: client });
+    }
 
     if (method === "OPTIONS") {
       return jsonResponse({ ok: true });

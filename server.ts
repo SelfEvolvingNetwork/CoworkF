@@ -2,6 +2,7 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import fs from "fs/promises";
+import { WebSocketServer, WebSocket } from "ws";
 import { calculateTermSessions, calculateTermSessionsWithHistory, getTodayJalali } from "./src/utils/jalali";
 
 let DB_DIR = path.join(process.cwd(), "my");
@@ -273,6 +274,21 @@ async function readDb(): Promise<DbState> {
   });
 }
 
+const activeWebSockets = new Set<WebSocket>();
+
+function broadcastState(state: DbState) {
+  const msg = JSON.stringify({ type: "STATE_UPDATED", db: state });
+  for (const ws of activeWebSockets) {
+    if (ws.readyState === WebSocket.OPEN) {
+      try {
+        ws.send(msg);
+      } catch (e) {
+        activeWebSockets.delete(ws);
+      }
+    }
+  }
+}
+
 async function writeDb(state: DbState): Promise<DbState> {
   return dbQueue.run(async () => {
     state.version = (state.version || 0) + 1;
@@ -284,6 +300,10 @@ async function writeDb(state: DbState): Promise<DbState> {
       await fs.mkdir(DB_DIR, { recursive: true });
     } catch (e) {}
     await fs.writeFile(DB_PATH, JSON.stringify(cleanState, null, 2), "utf-8");
+    
+    // Broadcast real-time change to all connected WebSocket clients
+    broadcastState(cleanState);
+
     return cleanState;
   });
 }
@@ -731,8 +751,51 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on port ${PORT}`);
+  });
+
+  const wss = new WebSocketServer({ noServer: true });
+
+  server.on("upgrade", (request, socket, head) => {
+    const url = new URL(request.url || "", `http://${request.headers.host || "localhost"}`);
+    if (url.pathname === "/api/ws" || url.pathname.startsWith("/api/ws")) {
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit("connection", ws, request);
+      });
+    } else {
+      socket.destroy();
+    }
+  });
+
+  wss.on("connection", async (ws) => {
+    activeWebSockets.add(ws);
+
+    try {
+      const currentDb = await readDb();
+      ws.send(JSON.stringify({ type: "INIT", db: currentDb }));
+    } catch (e) {}
+
+    ws.on("message", async (data) => {
+      try {
+        const text = data.toString();
+        const parsed = JSON.parse(text);
+        if (parsed.type === "PING") {
+          ws.send(JSON.stringify({ type: "PONG" }));
+        } else if (parsed.type === "GET_STATE") {
+          const currentDb = await readDb();
+          ws.send(JSON.stringify({ type: "STATE_UPDATED", db: currentDb }));
+        }
+      } catch (e) {}
+    });
+
+    ws.on("close", () => {
+      activeWebSockets.delete(ws);
+    });
+
+    ws.on("error", () => {
+      activeWebSockets.delete(ws);
+    });
   });
 }
 

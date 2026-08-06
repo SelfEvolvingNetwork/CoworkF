@@ -26,6 +26,7 @@ interface BackupTabProps {
   saveSessionAttendance: (termId: string, dateStr: string, status: 'present' | 'absent' | '') => void;
   importBackupData: (json: string) => Promise<boolean>;
   wipeAllData?: () => void;
+  isWsConnected?: boolean;
 }
 
 export function BackupTab({
@@ -38,7 +39,8 @@ export function BackupTab({
   calendarOverrides,
   importBackupData,
   wipeAllData,
-  updateConfig
+  updateConfig,
+  isWsConnected = false
 }: BackupTabProps) {
   // Client & Server Version states
   const [clientVersion, setClientVersion] = useState<string>(() => {
@@ -455,6 +457,21 @@ export function BackupTab({
                 : 'درحال بارگذاری'}
             </span>
           </button>
+
+          {/* WEBSOCKET LIVE SYNC INDICATOR BADGE */}
+          <div 
+            className={`flex items-center gap-1.5 border rounded-lg px-2 py-0.5 duration-100 ${
+              isWsConnected 
+                ? 'bg-emerald-50 border-emerald-200/60 text-emerald-800'
+                : 'bg-amber-50 border-amber-200/60 text-amber-800'
+            }`}
+            title={isWsConnected ? "اتصال لایو وبسوکت (WebSocket) فعال است - تمامی تغییرات به صورت لحظه‌ای روی تمام دستگاه‌ها سینک می‌شوند" : "در حال تلاش برای اتصال لایو (WebSocket)..."}
+          >
+            <span className={`w-2 h-2 rounded-full ${isWsConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+            <span className="text-[9px] font-black leading-none">
+              {isWsConnected ? 'سینک لحظه‌ای فعال' : 'ارتباط لایو...'}
+            </span>
+          </div>
         </div>
 
         {/* Global Controls & Actions */}

@@ -22,6 +22,7 @@ interface RightSidebarProps {
   queueCount: number;
   academyName?: string;
   academyLogo?: string;
+  isWsConnected?: boolean;
 }
 
 export function RightSidebar({ 
@@ -33,7 +34,8 @@ export function RightSidebar({
   uploadStatus,
   queueCount,
   academyName = 'آموزشگاه پرستو',
-  academyLogo
+  academyLogo,
+  isWsConnected = false
 }: RightSidebarProps) {
   const menuItems = [
     { id: 'reports', icon: FileSpreadsheet, title: 'گزارش‌ها', keyHint: 'Alt + 1' },
@@ -109,6 +111,10 @@ export function RightSidebar({
             <span id="sync-queue-badge" className="absolute -top-1 -left-1 bg-amber-500 text-slate-950 text-[9px] font-black w-[17px] h-[17px] rounded-full flex items-center justify-center shadow-md animate-pulse shrink-0">
               {queueCount}
             </span>
+          )}
+
+          {isWsConnected && queueCount === 0 && (
+            <span id="ws-live-dot" className="absolute -top-0.5 -left-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-slate-900 animate-pulse shrink-0" title="همگام‌سازی زنده وبسوکت فعال است" />
           )}
 
           {uploadStatus === 'error' ? (

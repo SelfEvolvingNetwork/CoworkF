@@ -160,6 +160,88 @@ export function useCoworkingState() {
     }
   };
 
+  const [isWsConnected, setIsWsConnected] = useState<boolean>(false);
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimeoutRef = useRef<any>(null);
+
+  // Real-time WebSocket connection setup
+  useEffect(() => {
+    let isMounted = true;
+
+    const connectWs = () => {
+      if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
+        return;
+      }
+
+      try {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/api/ws`;
+        const ws = new WebSocket(wsUrl);
+        wsRef.current = ws;
+
+        ws.onopen = () => {
+          if (!isMounted) return;
+          setIsWsConnected(true);
+        };
+
+        ws.onmessage = (event) => {
+          if (!isMounted) return;
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'STATE_UPDATED' || data.type === 'INIT') {
+              if (data.db) {
+                syncWithServer(data.db, true);
+                const now = new Date();
+                setLastSyncedTime(now.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+              }
+            }
+          } catch (e) {
+            console.error("WebSocket message parse error:", e);
+          }
+        };
+
+        ws.onclose = () => {
+          if (!isMounted) return;
+          setIsWsConnected(false);
+          wsRef.current = null;
+          reconnectTimeoutRef.current = setTimeout(connectWs, 3000);
+        };
+
+        ws.onerror = () => {
+          if (!isMounted) return;
+          setIsWsConnected(false);
+          try { ws.close(); } catch (e) {}
+        };
+      } catch (e) {
+        console.error("WebSocket setup error:", e);
+        if (isMounted) {
+          reconnectTimeoutRef.current = setTimeout(connectWs, 5000);
+        }
+      }
+    };
+
+    connectWs();
+
+    // Send periodic heartbeats
+    const heartbeat = setInterval(() => {
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        try {
+          wsRef.current.send(JSON.stringify({ type: 'PING' }));
+        } catch (e) {}
+      }
+    }, 25000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(heartbeat);
+      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+    };
+  }, []);
+
   // 2. Initial load (Try server API first, fallback to localStorage if unreachable)
   useEffect(() => {
     const fetchInitial = async () => {
@@ -702,5 +784,6 @@ export function useCoworkingState() {
     manualSync,
     uploadStatus,
     queueCount,
+    isWsConnected,
   };
 }

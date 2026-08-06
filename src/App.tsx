@@ -42,6 +42,7 @@ export default function App() {
     manualSync,
     uploadStatus,
     queueCount,
+    isWsConnected,
   } = useCoworkingState();
 
   const [selectedMemberId, setSelectedMemberId] = React.useState<string | null>(null);
@@ -293,6 +294,7 @@ export default function App() {
         queueCount={queueCount}
         academyName={config?.academyName}
         academyLogo={config?.academyLogo}
+        isWsConnected={isWsConnected}
       />
 
       {/* 2. Main Content Container on the LEFT */}
@@ -400,6 +402,7 @@ export default function App() {
               saveSessionAttendance={saveSessionAttendance}
               importBackupData={importBackupData}
               wipeAllData={wipeAllData}
+              isWsConnected={isWsConnected}
             />
           </div>
         </div>
