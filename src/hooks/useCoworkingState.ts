@@ -666,31 +666,72 @@ export function useCoworkingState() {
 
   // SESSION NOTES CRUD
   const saveSessionNote = async (termId: string, dateStr: string, note: string) => {
-    const key = `${termId}_${dateStr}`;
+    const normalizedDate = dateStr.replace(/-/g, '/');
+    const key = `${termId}_${normalizedDate}`;
 
     // Optimistic Update
-    setSessionNotes(prev => ({ ...prev, [key]: note }));
+    setSessionNotes(prev => {
+      const copy = { ...prev };
+      if (note && note.trim()) {
+        copy[key] = note.trim();
+      } else {
+        delete copy[key];
+      }
+      return copy;
+    });
 
     addToQueue({
       type: 'saveSessionNote',
       url: "/api/notes",
       method: "POST",
-      body: { termId, dateStr, note }
+      body: { termId, dateStr: normalizedDate, note }
     });
   };
 
   // SESSION ATTENDANCE CRUD
   const saveSessionAttendance = async (termId: string, dateStr: string, status: 'present' | 'absent' | '') => {
-    const key = `${termId}_${dateStr}`;
+    const normalizedDate = dateStr.replace(/-/g, '/');
+    const key = `${termId}_${normalizedDate}`;
 
-    // Optimistic Update
-    setSessionAttendance(prev => ({ ...prev, [key]: status }));
+    // Compute updated attendance map
+    let updatedAttendanceMap: Record<string, string> = {};
+    setSessionAttendance(prev => {
+      const copy = { ...prev };
+      if (status) {
+        copy[key] = status;
+      } else {
+        delete copy[key];
+      }
+      updatedAttendanceMap = copy;
+      return copy;
+    });
+
+    // Optimistically recalculate terms with updated attendance
+    setTerms(prevTerms => {
+      return prevTerms.map(t => {
+        if (t.id !== termId) return t;
+        const shift = shifts.find(s => s.id === t.shiftId);
+        if (!shift) return t;
+        const calc = calculateTermSessionsWithHistory(
+          t,
+          shift.weekDays,
+          calendarOverrides,
+          todayDate,
+          updatedAttendanceMap
+        );
+        return {
+          ...t,
+          sessions: calc.sessions,
+          endDate: calc.endDate,
+        };
+      });
+    });
 
     addToQueue({
       type: 'saveSessionAttendance',
       url: "/api/attendance",
       method: "POST",
-      body: { termId, dateStr, status }
+      body: { termId, dateStr: normalizedDate, status }
     });
   };
 

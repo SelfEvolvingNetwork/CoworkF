@@ -11,7 +11,10 @@ import {
   Edit2, 
   Calendar,
   Armchair,
-  ShieldCheck
+  ShieldCheck,
+  Clock,
+  SlidersHorizontal,
+  Activity
 } from 'lucide-react';
 
 interface TermsListTableProps {
@@ -215,13 +218,48 @@ export function TermsListTable({
           <thead>
             <tr className="border-b border-slate-200 text-slate-500 font-bold bg-slate-50 text-[11px]">
               <th className="p-3 font-semibold text-center w-[6%]" title="ردیف">#</th>
-              <th className="p-3 font-semibold text-right w-[16%]" title="سانس کاری انتخاب شده">سانس</th>
-              <th className="p-3 font-semibold text-center w-[10%]" title="نوع صندلی">صندلی</th>
-              <th className="p-3 font-semibold text-right w-[14%]" title="تاریخ شروع قرارداد">شروع</th>
-              <th className="p-3 font-semibold text-right w-[14%]" title="تاریخ پایان قرارداد">پایان</th>
-              <th className="p-3 text-center font-semibold w-[12%]" title="تعداد جلسات مجاز دوره">جلسات</th>
-              <th className="p-3 text-center font-semibold w-[10%]" title="وضعیت فعلی دوره">وضعیت</th>
-              <th className="p-3 text-left font-semibold w-[18%]" title="عملیات">عملیات</th>
+              <th className="p-3 font-semibold text-right w-[16%]" title="سانس کاری انتخاب شده">
+                <span className="inline-flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-slate-500" />
+                  <span>سانس</span>
+                </span>
+              </th>
+              <th className="p-3 font-semibold text-center w-[10%]" title="نوع صندلی (عادی/ویژه)">
+                <span className="inline-flex items-center justify-center gap-1">
+                  <Armchair className="w-3.5 h-3.5 text-slate-500" />
+                  <span>صندلی</span>
+                </span>
+              </th>
+              <th className="p-3 font-semibold text-right w-[14%]" title="تاریخ شروع قرارداد">
+                <span className="inline-flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                  <span>شروع</span>
+                </span>
+              </th>
+              <th className="p-3 font-semibold text-right w-[14%]" title="تاریخ پایان قرارداد">
+                <span className="inline-flex items-center gap-1">
+                  <CalendarClock className="w-3.5 h-3.5 text-slate-500" />
+                  <span>پایان</span>
+                </span>
+              </th>
+              <th className="p-3 text-center font-semibold w-[12%]" title="تعداد جلسات مجاز دوره">
+                <span className="inline-flex items-center justify-center gap-1">
+                  <Activity className="w-3.5 h-3.5 text-slate-500" />
+                  <span>جلسات</span>
+                </span>
+              </th>
+              <th className="p-3 text-center font-semibold w-[10%]" title="وضعیت فعلی دوره">
+                <span className="inline-flex items-center justify-center gap-1">
+                  <Check className="w-3.5 h-3.5 text-slate-500" />
+                  <span>وضعیت</span>
+                </span>
+              </th>
+              <th className="p-3 text-left font-semibold w-[18%]" title="عملیات">
+                <span className="inline-flex items-center justify-end gap-1">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500" />
+                  <span>عملیات</span>
+                </span>
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">

@@ -177,17 +177,31 @@ function migrateAndNormalizeState(input: any): DbState {
 
   const cleanNotes: Record<string, string> = {};
   for (const [key, value] of Object.entries(rawNotes)) {
-    if (typeof value === "string") {
-      const cleanKey = key.toString().replace(/-/g, '/');
-      cleanNotes[cleanKey] = value;
+    if (typeof value === "string" && value.trim().length > 0) {
+      if (key.includes('_')) {
+        const parts = key.toString().split('_');
+        let termId = parts[0];
+        if (termId.startsWith('term/')) termId = termId.replace('term/', 'term-');
+        if (termId.startsWith('member/')) termId = termId.replace('member/', 'member-');
+        if (termId.startsWith('shift/')) termId = termId.replace('shift/', 'shift-');
+        const dateStr = parts.slice(1).join('_').replace(/-/g, '/');
+        cleanNotes[`${termId}_${dateStr}`] = value;
+      }
     }
   }
 
   const cleanAttendance: Record<string, string> = {};
   for (const [key, value] of Object.entries(rawAttendance)) {
-    if (typeof value === "string") {
-      const cleanKey = key.toString().replace(/-/g, '/');
-      cleanAttendance[cleanKey] = value;
+    if (typeof value === "string" && (value === 'present' || value === 'absent')) {
+      if (key.includes('_')) {
+        const parts = key.toString().split('_');
+        let termId = parts[0];
+        if (termId.startsWith('term/')) termId = termId.replace('term/', 'term-');
+        if (termId.startsWith('member/')) termId = termId.replace('member/', 'member-');
+        if (termId.startsWith('shift/')) termId = termId.replace('shift/', 'shift-');
+        const dateStr = parts.slice(1).join('_').replace(/-/g, '/');
+        cleanAttendance[`${termId}_${dateStr}`] = value;
+      }
     }
   }
 
@@ -640,8 +654,13 @@ async function startServer() {
     try {
       const { termId, dateStr, note } = req.body;
       const db = await readDb();
-      const key = `${termId}_${dateStr}`;
-      db.sessionNotes[key] = note;
+      const normalizedDate = (dateStr || "").replace(/-/g, '/');
+      const key = `${termId}_${normalizedDate}`;
+      if (note && note.trim()) {
+        db.sessionNotes[key] = note.trim();
+      } else {
+        delete db.sessionNotes[key];
+      }
       await writeDb(db);
       res.json(db);
     } catch (err: any) {
@@ -654,8 +673,14 @@ async function startServer() {
     try {
       const { termId, dateStr, status } = req.body;
       const db = await readDb();
-      const key = `${termId}_${dateStr}`;
-      db.sessionAttendance[key] = status;
+      const normalizedDate = (dateStr || "").replace(/-/g, '/');
+      const key = `${termId}_${normalizedDate}`;
+      if (status === 'present' || status === 'absent') {
+        db.sessionAttendance[key] = status;
+      } else {
+        delete db.sessionAttendance[key];
+      }
+      recalculateAllTerms(db);
       await writeDb(db);
       res.json(db);
     } catch (err: any) {

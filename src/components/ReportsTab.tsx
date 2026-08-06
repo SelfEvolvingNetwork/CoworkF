@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Member, Shift, Term, SessionNotes, SessionAttendance } from '../types';
 import { getRemainingDays } from '../utils/jalali';
-import { ArrowUpDown, Search, CalendarClock, Check, X, Armchair, ShieldCheck } from 'lucide-react';
+import { ArrowUpDown, Search, CalendarClock, Check, X, Armchair, ShieldCheck, User, Clock, Calendar, SlidersHorizontal, Activity } from 'lucide-react';
 
 interface ReportsTabProps {
   terms: Term[];
@@ -272,6 +272,7 @@ export function ReportsTab({
               {/* Column 1: Person sort */}
               <th className="py-3 px-3 font-semibold text-slate-600 w-[15%]">
                 <button onClick={() => toggleSort('fullName')} className="flex items-center gap-1.5 hover:text-slate-800 cursor-pointer text-right w-full" title="نام مشتری">
+                  <User className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                   <span>نام</span>
                   <ArrowUpDown className="w-3.5 h-3.5 opacity-60 text-slate-400" />
                 </button>
@@ -280,6 +281,7 @@ export function ReportsTab({
               {/* Column 2: Shift sort */}
               <th className="py-3 px-3 font-semibold text-slate-600 w-[15%]">
                 <button onClick={() => toggleSort('shiftName')} className="flex items-center gap-1.5 hover:text-slate-800 cursor-pointer text-right w-full" title="سانس کاری">
+                  <Clock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                   <span>سانس</span>
                   <ArrowUpDown className="w-3.5 h-3.5 opacity-60 text-slate-400" />
                 </button>
@@ -288,6 +290,7 @@ export function ReportsTab({
               {/* Column 3: Desk type sort */}
               <th className="py-3 px-2 font-semibold text-slate-600 w-[8%]">
                 <button onClick={() => toggleSort('deskType')} className="flex items-center gap-1.5 hover:text-slate-800 cursor-pointer text-right w-full" title="نوع صندلی">
+                  <Armchair className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                   <span>صندلی</span>
                   <ArrowUpDown className="w-3.5 h-3.5 opacity-60 text-slate-400" />
                 </button>
@@ -296,6 +299,7 @@ export function ReportsTab({
               {/* Column 4: Remaining Sessions sort */}
               <th className="py-3 px-3 font-semibold text-center text-slate-600 w-[13%]">
                 <button onClick={() => toggleSort('remainingSessionsCount')} className="flex items-center justify-center gap-1.5 hover:text-slate-800 cursor-pointer text-center w-full" title="تعداد جلسات باقی‌مانده">
+                  <Activity className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                   <span>جلسات مانده</span>
                   <ArrowUpDown className="w-3.5 h-3.5 opacity-60 text-slate-400" />
                 </button>
@@ -304,16 +308,27 @@ export function ReportsTab({
               {/* Column 5: Remaining Days sort */}
               <th className="py-3 px-3 font-semibold text-center text-slate-600 w-[12%]">
                 <button onClick={() => toggleSort('remainingDaysCount')} className="flex items-center justify-center gap-1.5 hover:text-slate-800 cursor-pointer text-center w-full" title="روزهای باقی‌مانده تا پایان">
+                  <CalendarClock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                   <span>روز مانده</span>
                   <ArrowUpDown className="w-3.5 h-3.5 opacity-60 text-slate-400" />
                 </button>
               </th>
 
               {/* Column 6: Today's Attendance */}
-              <th className="py-3 px-3 font-semibold text-center text-slate-600 w-[19%]" title={`حضور امروز ${todayDate}`}>حضور امروز</th>
+              <th className="py-3 px-3 font-semibold text-center text-slate-600 w-[19%]" title={`حضور امروز ${todayDate}`}>
+                <div className="flex items-center justify-center gap-1">
+                  <Check className="w-3.5 h-3.5 text-slate-500" />
+                  <span>حضور امروز</span>
+                </div>
+              </th>
 
               {/* Column 7: Status */}
-              <th className="py-3 px-3 font-semibold text-center text-slate-600 w-[13%]" title="وضعیت دوره">وضعیت</th>
+              <th className="py-3 px-3 font-semibold text-center text-slate-600 w-[13%]" title="وضعیت دوره">
+                <div className="flex items-center justify-center gap-1">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500" />
+                  <span>وضعیت</span>
+                </div>
+              </th>
 
             </tr>
 

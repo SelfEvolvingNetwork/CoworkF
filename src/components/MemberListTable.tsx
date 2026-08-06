@@ -7,7 +7,10 @@ import {
   Undo2, 
   Trash2,
   FilterX,
-  Sparkles
+  Sparkles,
+  User,
+  Phone,
+  SlidersHorizontal
 } from 'lucide-react';
 
 interface MemberListTableProps {
@@ -229,9 +232,24 @@ export function MemberListTable({
           <thead className="sticky top-0 z-20 bg-slate-50 shadow-xs border-b border-slate-200">
             <tr className="border-b border-slate-150 text-slate-600 text-[11px] font-extrabold bg-slate-50">
               <th className="py-3 px-4 text-center select-none w-[10%] min-w-[60px]" title="ردیف">#</th>
-              <th className="py-3 px-4 text-right select-none w-[45%]" title="نام و نام خانوادگی مشتری">نام</th>
-              <th className="py-3 px-4 text-right select-none w-[25%]" title="شماره تلفن همراه">تلفن</th>
-              <th className="py-3 px-4 text-center select-none w-[20%] min-w-[120px]" title="عملیات">عملیات</th>
+              <th className="py-3 px-4 text-right select-none w-[45%]" title="نام و نام خانوادگی مشتری">
+                <span className="inline-flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-slate-500" />
+                  <span>نام</span>
+                </span>
+              </th>
+              <th className="py-3 px-4 text-right select-none w-[25%]" title="شماره تلفن همراه">
+                <span className="inline-flex items-center gap-1.5">
+                  <Phone className="w-3.5 h-3.5 text-slate-500" />
+                  <span>تلفن</span>
+                </span>
+              </th>
+              <th className="py-3 px-4 text-center select-none w-[20%] min-w-[120px]" title="عملیات">
+                <span className="inline-flex items-center justify-center gap-1.5">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500" />
+                  <span>عملیات</span>
+                </span>
+              </th>
             </tr>
             
             {/* Comprehensive filters input row */}

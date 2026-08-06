@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Shift, Term } from '../types';
 import { getWeekdayShortName } from '../utils/jalali';
-import { Clock, Plus, Trash2, Edit2, Check, X, AlertTriangle, Armchair, ShieldCheck } from 'lucide-react';
+import { Clock, Plus, Trash2, Edit2, Check, X, AlertTriangle, Armchair, ShieldCheck, CalendarDays, SlidersHorizontal } from 'lucide-react';
 
 interface ShiftsTableProps {
   shifts: Shift[];
@@ -180,9 +180,19 @@ export function ShiftsTable({
           <table className="w-full text-right border-collapse text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-slate-500 text-xs font-bold bg-slate-50/50">
-                <th className="py-4 px-3 font-semibold w-[6%] text-center text-slate-600">ردیف</th>
-                <th className="py-4 px-4 font-semibold w-[20%] text-right text-slate-600" title="نام و عنوان اختصاصی سانس کاری">نام</th>
-                <th className="py-4 px-4 font-semibold w-[38%] text-right text-slate-600" title="روزهای کاری تعیین شده در طول هفته">روزها</th>
+                <th className="py-4 px-3 font-semibold w-[6%] text-center text-slate-600" title="ردیف">#</th>
+                <th className="py-4 px-4 font-semibold w-[20%] text-right text-slate-600" title="نام و عنوان اختصاصی سانس کاری">
+                  <div className="flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5 text-blue-600" />
+                    <span>نام</span>
+                  </div>
+                </th>
+                <th className="py-4 px-4 font-semibold w-[38%] text-right text-slate-600" title="روزهای کاری تعیین شده در طول هفته">
+                  <div className="flex items-center gap-1">
+                    <CalendarDays className="w-3.5 h-3.5 text-slate-500" />
+                    <span>روزها</span>
+                  </div>
+                </th>
                 <th className="py-4 px-4 text-center font-semibold w-[13%] text-slate-600" title="گنجایش صندلی‌های میزهای عادی عمومی">
                   <div className="flex items-center justify-center gap-1">
                     <Armchair className="w-3.5 h-3.5 text-emerald-600" />
@@ -195,7 +205,12 @@ export function ShiftsTable({
                     <span>ویژه</span>
                   </div>
                 </th>
-                <th className="py-4 px-4 text-center font-semibold w-[10%] text-slate-600 font-sans">عملیات</th>
+                <th className="py-4 px-4 text-center font-semibold w-[10%] text-slate-600 font-sans" title="عملیات">
+                  <div className="flex items-center justify-center gap-1">
+                    <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500" />
+                    <span>عملیات</span>
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
