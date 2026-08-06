@@ -24,35 +24,18 @@ async function detectVersion() {
 }
 
 async function initDbDirectory() {
-  const envPath = process.env.UPLOAD_PATH;
-  if (envPath) {
-    try {
-      await fs.mkdir(envPath, { recursive: true });
-      const testFile = path.join(envPath, ".test-write");
-      await fs.writeFile(testFile, "test", "utf-8");
-      await fs.unlink(testFile);
-      DB_DIR = envPath;
-      dirSource = "env";
-      console.log(`Successfully verified and initialized storage at UPLOAD_PATH: ${DB_DIR}`);
-    } catch (err) {
-      console.error(`Warning: UPLOAD_PATH (${envPath}) is not writable. Falling back to local folder.`, err);
-      DB_DIR = path.join(process.cwd(), "my");
-      dirSource = "fallback_local";
-    }
-  } else {
-    try {
-      await fs.mkdir("/my", { recursive: true });
-      const testFile = path.join("/my", ".test-write");
-      await fs.writeFile(testFile, "test", "utf-8");
-      await fs.unlink(testFile);
-      DB_DIR = "/my";
-      dirSource = "default";
-      console.log(`Successfully verified and initialized storage at default /my: ${DB_DIR}`);
-    } catch (err) {
-      console.warn(`Warning: Default path /my is not writable. Falling back to local project folder ./my.`);
-      DB_DIR = path.join(process.cwd(), "my");
-      dirSource = "fallback_local";
-    }
+  try {
+    await fs.mkdir("/my", { recursive: true });
+    const testFile = path.join("/my", ".test-write");
+    await fs.writeFile(testFile, "test", "utf-8");
+    await fs.unlink(testFile);
+    DB_DIR = "/my";
+    dirSource = "default";
+    console.log(`Successfully verified and initialized storage at default /my: ${DB_DIR}`);
+  } catch (err) {
+    console.warn(`Warning: Default path /my is not writable. Falling back to local project folder ./my.`);
+    DB_DIR = path.join(process.cwd(), "my");
+    dirSource = "fallback_local";
   }
   DB_PATH = path.join(DB_DIR, "database.json");
 }

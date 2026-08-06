@@ -420,7 +420,7 @@ export function BackupTab({
             <Settings className="w-3.5 h-3.5" />
           </div>
           <h1 className="text-xs font-black text-slate-800 tracking-tight leading-none select-none">
-            تنظیمات و پشتیبان‌گیری
+            تنظیمات
           </h1>
 
           {/* SECURE SERVER FOLDER / DURABLE OBJECTS STATUS INDICATOR */}
@@ -525,118 +525,83 @@ export function BackupTab({
 
       {/* Main Configuration Settings Table */}
       <div className="flex-1 min-h-0 bg-white border border-slate-200 rounded-xl shadow-5xs overflow-hidden flex flex-col text-right">
-        <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center shrink-0">
+        <div className="p-3 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-3.5 bg-indigo-600 rounded-full"></div>
-            <h2 className="text-xs font-black text-slate-800">جدول مدیریت تنظیمات و مشخصات سیستم</h2>
+            <h2 className="text-xs font-black text-slate-800">تنظیمات سیستم</h2>
           </div>
-          <span className="text-[10px] text-slate-400 font-extrabold select-none">
-            مقادیر پیش‌فرض برای ظرفیت‌ها و هدر فاکتورهای چاپی
-          </span>
         </div>
 
         {/* Scrollable Container with the Settings Table */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-
-          {/* Cloudflare Durable Objects / KV Unbound Warning & Guide Banner */}
-          {(secureFolderStatus.status === 'unbound' || secureFolderStatus.source === 'edge_memory') && (
-            <div className="bg-amber-50/90 border border-amber-200/90 rounded-xl p-3.5 space-y-2.5 text-slate-800 text-xs">
-              <div className="flex items-start gap-2.5">
-                <div className="p-1.5 bg-amber-100 text-amber-800 rounded-lg shrink-0 mt-0.5">
-                  <AlertCircle className="w-4 h-4 text-amber-700" />
-                </div>
-                <div className="space-y-1 leading-relaxed">
-                  <h3 className="font-extrabold text-amber-900 text-xs">
-                    ⚠️ عدم اتصال به پایگاه داده ابری کلودفلر (Durable Objects / KV)
-                  </h3>
-                  <p className="text-[11px] text-amber-800 font-medium">
-                    اطلاعات ثبت‌شده هم‌اکنون فقط در حافظه محلی ذخیره می‌شوند و بین دستگاه‌های مختلف همگام‌سازی <strong>نمی‌شوند</strong>.
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-white/80 border border-amber-200/60 rounded-lg p-3 space-y-1.5 text-[10.5px]">
-                <div className="font-bold text-amber-950">📌 راهنمای سریع فعال‌سازی Cloudflare Durable Objects:</div>
-                <ol className="list-decimal list-inside space-y-1 text-slate-700 pr-1 leading-normal font-medium">
-                  <li>فایل <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold text-amber-900">wrangler.toml</code> پروژه از قبل شامل پیکربندی کامل Durable Object به نام <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold text-amber-900">COWORKING_DO</code> و کلاس <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold text-amber-900">CoworkingDO</code> است.</li>
-                  <li>با اجرای دستور <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold text-amber-900">npm run deploy</code> یا انتشار از طریق Cloudflare Workers، Durable Object به طور خودکار ایجاد و فعال خواهد شد.</li>
-                  <li>در صورت استفاده از Cloudflare Pages، می‌توانید در تب <strong>Settings</strong> ➔ <strong>Functions</strong> دیتابیس <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold text-amber-900">COWORKING_DO</code> یا <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold text-amber-900">COWORKING_KV</code> را به عنوان Binding اضافه کنید.</li>
-                </ol>
-              </div>
-            </div>
-          )}
+        <div className="flex-1 overflow-y-auto p-3 space-y-3">
 
           <table className="w-full text-right border-collapse text-xs">
             <thead>
               <tr className="border-b border-slate-200 text-slate-500 font-bold select-none text-[10.5px]">
-                <th className="pb-2 w-[40%]">موضوع تنظیم</th>
-                <th className="pb-2 w-[60%]">مقدار / فیلد ویرایش</th>
+                <th className="pb-2 w-[40%]">عنوان</th>
+                <th className="pb-2 w-[60%]">مقدار</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
               {/* Default Regular Seats Count */}
               <tr>
-                <td className="py-3.5 pl-3">
-                  <div className="font-extrabold text-slate-800">تعداد صندلی‌های پیش‌فرض عادی</div>
-                  <div className="text-[10px] text-slate-400 font-medium mt-0.5">ظرفیت پیش‌فرض برای تعریف صندلی‌های عمومی در سانس‌ها</div>
+                <td className="py-2.5 pl-3">
+                  <div className="font-extrabold text-slate-800">صندلی عادی (پیش‌فرض)</div>
                 </td>
-                <td className="py-3.5">
+                <td className="py-2.5">
                   <input
                     type="number"
                     min="1"
                     max="500"
                     value={regularDesks}
                     onChange={(e) => setRegularDesks(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-full sm:w-48 h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all text-center"
+                    className="w-full sm:w-40 h-8 px-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all text-center"
                   />
                 </td>
               </tr>
 
               {/* Default Premium Seats Count */}
               <tr>
-                <td className="py-3.5 pl-3">
-                  <div className="font-extrabold text-slate-800">تعداد صندلی‌های پیش‌فرض ویژه</div>
-                  <div className="text-[10px] text-slate-400 font-medium mt-0.5">ظرفیت پیش‌فرض برای صندلی‌های اختصاصی/VIP در سانس‌ها</div>
+                <td className="py-2.5 pl-3">
+                  <div className="font-extrabold text-slate-800">صندلی ویژه (پیش‌فرض)</div>
                 </td>
-                <td className="py-3.5">
+                <td className="py-2.5">
                   <input
                     type="number"
                     min="0"
                     max="500"
                     value={premiumDesks}
                     onChange={(e) => setPremiumDesks(Math.max(0, parseInt(e.target.value) || 0))}
-                    className="w-full sm:w-48 h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all text-center"
+                    className="w-full sm:w-40 h-8 px-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all text-center"
                   />
                 </td>
               </tr>
 
               {/* Academy Name */}
               <tr>
-                <td className="py-3.5 pl-3">
-                  <div className="font-extrabold text-slate-800">نام آموزشگاه</div>
-                  <div className="text-[10px] text-slate-400 font-medium mt-0.5">عنوان رسمی مدرسه، آکادمی یا فضای اشتراکی کاری</div>
+                <td className="py-2.5 pl-3">
+                  <div className="font-extrabold text-slate-800">نام مجموعه</div>
                 </td>
-                <td className="py-3.5">
+                <td className="py-2.5">
                   <input
                     type="text"
                     value={academyName}
                     onChange={(e) => setAcademyName(e.target.value)}
                     placeholder="آموزشگاه پرستو"
-                    className="w-full max-w-md h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all"
+                    className="w-full max-w-sm h-8 px-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all"
                   />
                 </td>
               </tr>
 
               {/* Academy Logo Selector & Uploader */}
               <tr>
-                <td className="py-3.5 pl-3">
-                  <div className="font-extrabold text-slate-800">آیکون و لوگوی آموزشگاه</div>
-                  <div className="text-[10px] text-slate-400 font-medium mt-0.5">انتخاب لوگوی آماده یا بارگذاری تصویر سفارشی (PWA و منو)</div>
+                <td className="py-2.5 pl-3">
+                  <div className="font-extrabold text-slate-800">لوگو</div>
                 </td>
-                <td className="py-3.5">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <td className="py-2.5">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                     {/* Visual Preview Box */}
-                    <div className="w-16 h-16 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center p-2 shadow-sm shrink-0">
+                    <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center p-1.5 shadow-sm shrink-0">
                       <img 
                         src={academyLogo || "/parastu_logo.png"} 
                         alt="لوگو" 
@@ -647,60 +612,60 @@ export function BackupTab({
                       />
                     </div>
 
-                    <div className="flex flex-col gap-2 w-full">
+                    <div className="flex flex-col gap-1.5 w-full">
                       {/* Presets List */}
-                      <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <button
                           type="button"
                           onClick={() => setAcademyLogo('')}
-                          className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
                             academyLogo === '' 
                               ? 'bg-indigo-50 text-indigo-700 border-indigo-200' 
                               : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                           }`}
                         >
-                          پیش‌فرض (پرستو)
+                          پیش‌فرض
                         </button>
                         <button
                           type="button"
                           onClick={() => setAcademyLogo('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%234f46e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>')}
-                          className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
                             academyLogo.includes('22%2010v6')
                               ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
                               : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                           }`}
                         >
-                          کلاه فارغ‌التحصیلی
+                          کلاه
                         </button>
                         <button
                           type="button"
                           onClick={() => setAcademyLogo('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%232563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>')}
-                          className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
                             academyLogo.includes('2%203h6')
                               ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
                               : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                           }`}
                         >
-                          کتاب باز
+                          کتاب
                         </button>
                         <button
                           type="button"
                           onClick={() => setAcademyLogo('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%23059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><line x1="9" y1="22" x2="9" y2="16"/><line x1="15" y1="22" x2="15" y2="16"/><line x1="9" y1="16" x2="15" y2="16"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M8 10h.01"/><path d="M16 10h.01"/></svg>')}
-                          className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
                             academyLogo.includes('x="4"%20y="2"')
                               ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
                               : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                           }`}
                         >
-                          ساختمان آموزشی
+                          ساختمان
                         </button>
                       </div>
 
                       {/* Custom File Upload Input */}
-                      <div className="flex items-center gap-2 mt-1">
-                        <label className="px-3 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-[10px] font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-colors">
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <label className="px-2.5 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-colors">
                           <Upload className="w-3 h-3 text-slate-500" />
-                          <span>بارگذاری تصویر دلخواه...</span>
+                          <span>تصویر جدید...</span>
                           <input
                             type="file"
                             accept="image/*"
@@ -709,14 +674,14 @@ export function BackupTab({
                               const file = e.target.files?.[0];
                               if (file) {
                                 if (file.size > 200 * 1024) {
-                                  showToast('error', 'اندازه تصویر باید کمتر از ۲۰۰ کیلوبایت باشد تا با سرعت بهینه ذخیره شود.');
+                                  showToast('error', 'حجم تصویر باید کمتر از ۲۰۰ کیلوبایت باشد.');
                                   return;
                                 }
                                 const reader = new FileReader();
                                 reader.onload = (event) => {
                                   if (event.target?.result) {
                                     setAcademyLogo(event.target.result as string);
-                                    showToast('success', 'لوگوی سفارشی با موفقیت در پیش‌نمایش بارگذاری شد. لطفا دکمه ذخیره نهایی را بزنید.');
+                                    showToast('success', 'لوگوی جدید بارگذاری شد.');
                                   }
                                 };
                                 reader.readAsDataURL(file);
@@ -729,15 +694,14 @@ export function BackupTab({
                             type="button"
                             onClick={() => {
                               setAcademyLogo('');
-                              showToast('success', 'لوگوی سفارشی پاک‌سازی شد.');
+                              showToast('success', 'لوگو حذف شد.');
                             }}
-                            className="px-2 h-8 rounded-lg text-rose-600 hover:bg-rose-50 text-[10px] font-bold border border-rose-200 transition-colors cursor-pointer"
+                            className="px-2 h-7 rounded-lg text-rose-600 hover:bg-rose-50 text-[10px] font-bold border border-rose-200 transition-colors cursor-pointer"
                           >
-                            حذف لوگو
+                            حذف
                           </button>
                         )}
                       </div>
-                      <p className="text-[9px] text-slate-400 font-medium">تصاویر با کادر مربع (۱:۱) و حجم پایین توصیه می‌شوند.</p>
                     </div>
                   </div>
                 </td>
@@ -745,17 +709,16 @@ export function BackupTab({
 
               {/* Academy Phone */}
               <tr>
-                <td className="py-3.5 pl-3">
-                  <div className="font-extrabold text-slate-800">شماره تماس آموزشگاه</div>
-                  <div className="text-[10px] text-slate-400 font-medium mt-0.5">شماره تلفن ثابت یا همراه جهت برقراری تماس و درج در گزارشات</div>
+                <td className="py-2.5 pl-3">
+                  <div className="font-extrabold text-slate-800">تلفن</div>
                 </td>
-                <td className="py-3.5">
+                <td className="py-2.5">
                   <input
                     type="text"
                     value={academyPhone}
                     onChange={(e) => setAcademyPhone(e.target.value)}
-                    placeholder="مثال: ۰۲۱۸۸۸۸۸۸۸۸"
-                    className="w-full max-w-md h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all text-left font-mono"
+                    placeholder="۰۲۱۸۸۸۸۸۸۸۸"
+                    className="w-full max-w-sm h-8 px-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all text-left font-mono"
                     dir="ltr"
                   />
                 </td>
@@ -763,29 +726,27 @@ export function BackupTab({
 
               {/* Academy Address */}
               <tr>
-                <td className="py-3.5 pl-3">
-                  <div className="font-extrabold text-slate-800">آدرس فیزیکی آموزشگاه</div>
-                  <div className="text-[10px] text-slate-400 font-medium mt-0.5">نشانی پستی دقیق جهت چاپ روی سربرگ‌ها و رسیدهای ثبت‌نام</div>
+                <td className="py-2.5 pl-3">
+                  <div className="font-extrabold text-slate-800">آدرس</div>
                 </td>
-                <td className="py-3.5">
+                <td className="py-2.5">
                   <textarea
                     rows={2}
                     value={academyAddress}
                     onChange={(e) => setAcademyAddress(e.target.value)}
-                    placeholder="مثال: تهران، خیابان آزادی، پلاک ۱۲"
-                    className="w-full max-w-md px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all resize-none"
+                    placeholder="آدرس پستی..."
+                    className="w-full max-w-sm px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all resize-none"
                   />
                 </td>
               </tr>
 
               {/* Client Version */}
               <tr>
-                <td className="py-3.5 pl-3">
-                  <div className="font-extrabold text-slate-800">نسخه نرم‌افزار کلاینت</div>
-                  <div className="text-[10px] text-slate-400 font-medium mt-0.5">شناسه نسخه فعال کلاینت جهت ارزیابی انطباق دیتاسنتر سرور</div>
+                <td className="py-2.5 pl-3">
+                  <div className="font-extrabold text-slate-800">نسخه کلاینت</div>
                 </td>
-                <td className="py-3.5">
-                  <div className="inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-200/65 rounded-lg px-2.5 py-1" title="کلاینت همگام با دیتاسنتر سرور">
+                <td className="py-2.5">
+                  <div className="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-200/65 rounded-lg px-2 py-0.5" title="نسخه کلاینت">
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                     <span className="font-mono text-xs font-black text-emerald-950 tracking-tight leading-none">{clientVersion}</span>
                   </div>
@@ -795,14 +756,15 @@ export function BackupTab({
           </table>
 
           {/* Action Button Section inside scroll area to save */}
-          <div className="pt-4 border-t border-slate-100 flex justify-end">
+          <div className="pt-3 border-t border-slate-100 flex justify-end">
             <button
               type="button"
               onClick={handleSaveSettings}
-              className="flex items-center gap-2 px-5 h-10 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-xl text-xs font-black transition-all cursor-pointer shadow-sm shadow-indigo-100"
+              className="flex items-center gap-1.5 px-4 h-8 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black transition-all cursor-pointer shadow-sm"
+              title="ذخیره تنظیمات"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>ذخیره نهایی تنظیمات سیستم</span>
+              <span>ذخیره</span>
             </button>
           </div>
         </div>

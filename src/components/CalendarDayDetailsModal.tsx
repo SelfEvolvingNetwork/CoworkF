@@ -90,11 +90,11 @@ export function CalendarDayDetailsModal({
         {/* Prominent Back Button (Right direction since RTL) */}
         <button 
           onClick={onClose} 
-          className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-800 border border-slate-200 rounded-xl transition-all cursor-pointer shadow-3xs hover:shadow-2xs text-xs font-bold font-sans"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-800 border border-slate-200 rounded-xl transition-all cursor-pointer shadow-3xs hover:shadow-2xs text-xs font-bold font-sans"
           title="بازگشت به تقویم اصلی"
         >
           <ArrowRight className="w-4 h-4 text-slate-500" />
-          <span>بازگشت به تقویم</span>
+          <span>بازگشت</span>
         </button>
 
         {/* Selected date display */}
@@ -103,20 +103,19 @@ export function CalendarDayDetailsModal({
             <CalendarDays className="w-5.5 h-5.5" />
           </div>
           <div>
-            <h3 className="text-base sm:text-md font-black text-slate-900 tracking-tight">
+            <h3 className="text-sm font-black text-slate-900 tracking-tight">
               {selectedDayName}، {selParts.jd} {getJalaliMonthName(selParts.jm)} {selParts.jy}
             </h3>
-            <p className="text-[11px] text-slate-500 mt-1 font-semibold flex items-center gap-1.5 flex-row-reverse">
-              <span>وضعیت روز کاری:</span>
-              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black ${
+            <div className="text-[11px] text-slate-500 mt-1 font-semibold flex items-center gap-1 flex-row-reverse">
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
                 selectedDayIsHoliday 
-                  ? 'bg-rose-50 text-rose-705 border border-rose-100' 
-                  : 'bg-emerald-50 text-emerald-705 border border-emerald-100'
+                  ? 'bg-rose-50 text-rose-700 border border-rose-200' 
+                  : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
               }`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${selectedDayIsHoliday ? 'bg-rose-500' : 'bg-emerald-500'} animate-pulse`} />
-                {selectedDayIsHoliday ? 'تعطیل عمومی' : 'کاری فعال مراجعین'}
+                <span className={`w-1.5 h-1.5 rounded-full ${selectedDayIsHoliday ? 'bg-rose-500' : 'bg-emerald-500'}`} />
+                {selectedDayIsHoliday ? 'تعطیل' : 'کاری'}
               </span>
-            </p>
+            </div>
           </div>
         </div>
       </div>
@@ -127,45 +126,35 @@ export function CalendarDayDetailsModal({
           
           {/* Right Column: Administrative Configurations */}
           <div className="lg:col-span-2 flex flex-col gap-4 shrink-0 justify-start">
-            <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-3xs">
-              <span className="text-[9.5px] text-slate-400 font-extrabold uppercase tracking-wide">مدیریت وضعیت قانونی تقویم</span>
-              <h4 className="text-xs font-black text-slate-800 mt-1.5">تعطیلی عمومی / تعویق جلسات</h4>
-              <p className="text-[11px] text-slate-500 leading-relaxed font-semibold mt-2">
-                در صورتی که با تعطیلی‌های ناگهانی یا ابطال سرویس در این روز مواجه شدید، وضعیت این روز را تغییر دهید تا به طور خودکار به مراجعین جبرانی داده شود.
-              </p>
+            <div className="bg-white rounded-3xl p-4 border border-slate-200 shadow-3xs">
+              <h4 className="text-xs font-black text-slate-800">تعطیلی / تعویق</h4>
               
-              <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col gap-3">
+              <div className="mt-3 pt-3 border-t border-slate-100 flex flex-col gap-2.5">
                 <div className="flex justify-between items-center flex-row-reverse text-xs font-bold text-slate-600">
-                  <span>وضعیت فعلی روز:</span>
+                  <span>وضعیت:</span>
                   <span className={`font-black ${selectedDayIsHoliday ? 'text-rose-600' : 'text-emerald-700'}`}>
-                    {selectedDayIsHoliday ? 'تعطیل عمومی' : 'روز کاری فعال'}
+                    {selectedDayIsHoliday ? 'تعطیل' : 'کاری'}
                   </span>
                 </div>
 
                 <button
                   id={`dialog-toggle-day-btn-${selectedDate}`}
                   onClick={() => toggleDayStatus(selectedDate)}
-                  className={`w-full flex items-center justify-between gap-1.5 px-3.5 py-2.5 text-xs font-black rounded-xl cursor-pointer shadow-3xs hover:shadow-2xs transition-all border ${
+                  className={`w-full flex items-center justify-between gap-1.5 px-3 py-2 text-xs font-bold rounded-xl cursor-pointer shadow-3xs transition-all border ${
                     selectedDayIsHoliday 
                       ? 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100' 
                       : 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
                   }`}
+                  title="تغییر وضعیت کاری/تعطیل"
                 >
-                  <span>تغییر با یک کلیک</span>
+                  <span>تغییر وضعیت</span>
                   {selectedDayIsHoliday ? (
-                    <ToggleLeft className="w-5.5 h-4.5 text-rose-500 hover:text-rose-600" />
+                    <ToggleLeft className="w-5 h-4 text-rose-500" />
                   ) : (
-                    <ToggleRight className="w-5.5 h-4.5 text-emerald-600 hover:text-emerald-750" />
+                    <ToggleRight className="w-5 h-4 text-emerald-600" />
                   )}
                 </button>
               </div>
-            </div>
-
-            <div className="bg-blue-50/30 rounded-3xl p-5 border border-blue-100/50 shadow-3xs">
-              <h4 className="text-xs font-black text-slate-700">راهنمای هوشمند جلسات تعطیل:</h4>
-              <p className="text-[11.5px] text-slate-500 leading-relaxed mt-2 text-right">
-                ثبت تاریخ به عنوان تعطیل، اعتبار دوره‌ها را به تعویق انداخته و زمان آن را افزایش می‌دهد. بدین ترتیب مراجعین در موعد سرآمد دوره‌شان حق حضور کامل را حفظ می‌کنند.
-              </p>
             </div>
           </div>
 

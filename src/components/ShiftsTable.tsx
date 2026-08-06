@@ -139,15 +139,12 @@ export function ShiftsTable({
     <div id="shifts-table-container" className="flex flex-col gap-6 animate-fade-in text-right">
       
       {/* Table Header */}
-      <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex-wrap gap-4">
+      <div className="flex justify-between items-center bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex-wrap gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-800 flex items-center gap-3">
+          <h1 className="text-lg font-extrabold text-slate-800 flex items-center gap-2">
             <Clock className="w-5 h-5 text-blue-600" />
-            <span>تنظیمات سانس‌بندی و گنجایش صندلی‌ها</span>
+            <span>سانس‌ها</span>
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            تعریف ظرفیت پذیرش میزهای عادی و بخش ویژه (VIP) به تفکیک برای هر یک از سانس‌های کاری
-          </p>
         </div>
         {!isAdding && (
           <button
@@ -161,11 +158,11 @@ export function ShiftsTable({
               setEditingId(null);
               setErrorText('');
             }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold leading-none cursor-pointer transition-all shadow-xs"
-            title="افزودن سانس کاری جدید (میانبر: Alt + S)"
+            className="flex items-center gap-1 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold leading-none cursor-pointer transition-all shadow-xs"
+            title="افزودن سانس جدید (Alt + S)"
           >
             <Plus className="w-4 h-4" />
-            <span>افزودن</span>
+            <span>جدید</span>
           </button>
         )}
       </div>

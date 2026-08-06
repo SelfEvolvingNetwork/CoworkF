@@ -228,12 +228,12 @@ export function ReportsTab({
       {/* Tab Header */}
       <div className="flex justify-between items-center bg-white p-[10px] rounded-2xl border border-slate-200 shadow-xs flex-wrap gap-4 shrink-0">
         <div className="flex items-center gap-3">
-          <h1 className="text-xl font-bold text-slate-800 flex items-center gap-3">
-            <span>گزارش‌های ما</span>
+          <h1 className="text-lg font-extrabold text-slate-800 flex items-center gap-2">
+            <span>گزارش‌ها</span>
           </h1>
           <div className="flex items-center gap-2">
             <span className="text-xs bg-indigo-50 text-indigo-700 border border-indigo-200/60 font-bold px-3 py-1 rounded-xl" title="مجموع کل جلسات باقی‌مانده اعضای دارای اشتراک فعال">
-              کل جلسات باقی‌مانده: {enrichedReports.filter(r => r.status === 'current').reduce((acc, r) => acc + r.remainingSessionsCount, 0)} جلسه
+              جلسات مانده: {enrichedReports.filter(r => r.status === 'current').reduce((acc, r) => acc + r.remainingSessionsCount, 0)}
             </span>
           </div>
         </div>
@@ -249,10 +249,11 @@ export function ReportsTab({
                 setAttendanceTodayFilter('all');
                 setStatusFilter('all');
               }}
-              className="text-xs text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-3 py-2 rounded-xl font-bold flex items-center gap-1 cursor-pointer transition-colors"
+              className="text-xs text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 cursor-pointer transition-colors"
+              title="پاکسازی کلیه فیلترهای اعمال شده"
             >
-              <span>پاکسازی کامل فیلترها</span>
               <span>✕</span>
+              <span>پاکسازی</span>
             </button>
           )}
 
@@ -266,53 +267,53 @@ export function ReportsTab({
               <tr className="border-b border-slate-200 text-slate-500 text-xs font-bold bg-slate-50">
               
               {/* Column 0: Row index */}
-              <th className="py-4 px-2 font-semibold text-center text-slate-600 w-[5%]" title="ردیف">ردیف</th>
+              <th className="py-3 px-2 font-semibold text-center text-slate-600 w-[5%]" title="ردیف">#</th>
 
               {/* Column 1: Person sort */}
-              <th className="py-4 px-3 font-semibold text-slate-600 w-[15%]">
-                <button onClick={() => toggleSort('fullName')} className="flex items-center gap-1.5 hover:text-slate-800 cursor-pointer text-right w-full" title="نام و کاربری مشتری مراجع">
+              <th className="py-3 px-3 font-semibold text-slate-600 w-[15%]">
+                <button onClick={() => toggleSort('fullName')} className="flex items-center gap-1.5 hover:text-slate-800 cursor-pointer text-right w-full" title="نام مشتری">
                   <span>نام</span>
                   <ArrowUpDown className="w-3.5 h-3.5 opacity-60 text-slate-400" />
                 </button>
               </th>
 
               {/* Column 2: Shift sort */}
-              <th className="py-4 px-3 font-semibold text-slate-600 w-[15%]">
-                <button onClick={() => toggleSort('shiftName')} className="flex items-center gap-1.5 hover:text-slate-800 cursor-pointer text-right w-full" title="سانس کاری آخرین دوره مشتری">
+              <th className="py-3 px-3 font-semibold text-slate-600 w-[15%]">
+                <button onClick={() => toggleSort('shiftName')} className="flex items-center gap-1.5 hover:text-slate-800 cursor-pointer text-right w-full" title="سانس کاری">
                   <span>سانس</span>
                   <ArrowUpDown className="w-3.5 h-3.5 opacity-60 text-slate-400" />
                 </button>
               </th>
 
               {/* Column 3: Desk type sort */}
-              <th className="py-4 px-2 font-semibold text-slate-600 w-[8%]">
-                <button onClick={() => toggleSort('deskType')} className="flex items-center gap-1.5 hover:text-slate-800 cursor-pointer text-right w-full" title="نوع صندلی اختصاصی (عادی یا VIP)">
+              <th className="py-3 px-2 font-semibold text-slate-600 w-[8%]">
+                <button onClick={() => toggleSort('deskType')} className="flex items-center gap-1.5 hover:text-slate-800 cursor-pointer text-right w-full" title="نوع صندلی">
                   <span>صندلی</span>
                   <ArrowUpDown className="w-3.5 h-3.5 opacity-60 text-slate-400" />
                 </button>
               </th>
 
               {/* Column 4: Remaining Sessions sort */}
-              <th className="py-4 px-3 font-semibold text-center text-slate-600 w-[13%]">
-                <button onClick={() => toggleSort('remainingSessionsCount')} className="flex items-center justify-center gap-1.5 hover:text-slate-800 cursor-pointer text-center w-full" title="تعداد جلسات باقی‌مانده تا پایان ترم">
-                  <span>جلسات باقی‌مانده</span>
+              <th className="py-3 px-3 font-semibold text-center text-slate-600 w-[13%]">
+                <button onClick={() => toggleSort('remainingSessionsCount')} className="flex items-center justify-center gap-1.5 hover:text-slate-800 cursor-pointer text-center w-full" title="تعداد جلسات باقی‌مانده">
+                  <span>جلسات مانده</span>
                   <ArrowUpDown className="w-3.5 h-3.5 opacity-60 text-slate-400" />
                 </button>
               </th>
 
               {/* Column 5: Remaining Days sort */}
-              <th className="py-4 px-3 font-semibold text-center text-slate-600 w-[12%]">
-                <button onClick={() => toggleSort('remainingDaysCount')} className="flex items-center justify-center gap-1.5 hover:text-slate-800 cursor-pointer text-center w-full" title="روزهای باقی‌مانده تا پایان قرارداد (منفی یعنی گذشته)">
-                  <span>روزهای باقی‌مانده</span>
+              <th className="py-3 px-3 font-semibold text-center text-slate-600 w-[12%]">
+                <button onClick={() => toggleSort('remainingDaysCount')} className="flex items-center justify-center gap-1.5 hover:text-slate-800 cursor-pointer text-center w-full" title="روزهای باقی‌مانده تا پایان">
+                  <span>روز مانده</span>
                   <ArrowUpDown className="w-3.5 h-3.5 opacity-60 text-slate-400" />
                 </button>
               </th>
 
               {/* Column 6: Today's Attendance */}
-              <th className="py-4 px-3 font-semibold text-center text-slate-600 w-[19%]" title={`وضعیت حضور و غیاب امروز مورخ ${todayDate}`}>حضور امروز</th>
+              <th className="py-3 px-3 font-semibold text-center text-slate-600 w-[19%]" title={`حضور امروز ${todayDate}`}>حضور امروز</th>
 
               {/* Column 7: Status */}
-              <th className="py-4 px-3 font-semibold text-center text-slate-600 w-[13%]" title="وضعیت زمانی آخرین ترم مراجع">وضعیت</th>
+              <th className="py-3 px-3 font-semibold text-center text-slate-600 w-[13%]" title="وضعیت دوره">وضعیت</th>
 
             </tr>
 

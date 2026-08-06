@@ -193,32 +193,29 @@ export function MemberListTable({
       <div className="flex justify-between items-center pb-2 border-b border-slate-100 flex-row-reverse shrink-0">
         <div className="flex items-center gap-2 flex-row-reverse">
           <h3 className="font-extrabold text-slate-800 text-sm">مشتریان</h3>
-          <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-lg font-sans font-bold" title="کل پرونده‌های ثبت‌شده">
-            {members.length} عضو
+          <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-lg font-sans font-bold" title="تعداد کل اعضا">
+            {members.length}
           </span>
-          <span className="text-[10px] text-slate-400 hidden sm:inline" title="کلیدهای میانبر: Alt + A برای بازکردن فرم">
-            (میانبر فرم ثبت تند: Alt+A)
+          <span className="text-[10px] text-slate-400 hidden sm:inline" title="کلید میانبر ثبت جدید: Alt + A">
+            (Alt+A)
           </span>
         </div>
         
         <button
           onClick={() => setShowAddRow(!showAddRow)}
-          className={`text-xs font-bold py-1.5 px-3.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 border ${
+          className={`text-xs font-bold py-1.5 px-3 rounded-xl transition-all cursor-pointer flex items-center gap-1 border ${
             showAddRow 
               ? 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100' 
               : 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700 shadow-xs'
           }`}
-          title={showAddRow ? "لغو ثبت مشتری جدید (Esc)" : "افزودن پرونده مشتری جدید (میانبر: Alt + A)"}
+          title={showAddRow ? "لغو ثبت مشتری جدید (Esc)" : "افزودن پرونده مشتری جدید (Alt + A)"}
         >
           {showAddRow ? (
-            <>
-              <span>✕</span>
-              <span>لغو</span>
-            </>
+            <span>✕</span>
           ) : (
             <>
               <UserPlus className="w-3.5 h-3.5" />
-              <span>افزودن</span>
+              <span>جدید</span>
             </>
           )}
         </button>
@@ -231,15 +228,15 @@ export function MemberListTable({
           {/* Fixed Non-scroll Header & Columns Filters */}
           <thead className="sticky top-0 z-20 bg-slate-50 shadow-xs border-b border-slate-200">
             <tr className="border-b border-slate-150 text-slate-600 text-[11px] font-extrabold bg-slate-50">
-              <th className="py-3 px-4 text-center select-none w-[10%] min-w-[60px]">ردیف</th>
-              <th className="py-3 px-4 text-right select-none w-[45%]">نام مشتری</th>
-              <th className="py-3 px-4 text-right select-none w-[25%]">تلفن همراه</th>
-              <th className="py-3 px-4 text-center select-none w-[20%] min-w-[120px]">عملیات</th>
+              <th className="py-3 px-4 text-center select-none w-[10%] min-w-[60px]" title="ردیف">#</th>
+              <th className="py-3 px-4 text-right select-none w-[45%]" title="نام و نام خانوادگی مشتری">نام</th>
+              <th className="py-3 px-4 text-right select-none w-[25%]" title="شماره تلفن همراه">تلفن</th>
+              <th className="py-3 px-4 text-center select-none w-[20%] min-w-[120px]" title="عملیات">عملیات</th>
             </tr>
             
             {/* Comprehensive filters input row */}
             <tr className="bg-slate-50 border-b border-slate-150">
-              <td className="p-2 text-center text-slate-400 font-bold">🔍 فیلتر</td>
+              <td className="p-2 text-center text-slate-400 font-bold" title="فیلترهای جدول">🔍</td>
               <td className="p-2">
                  <input
                   type="text"

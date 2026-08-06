@@ -213,15 +213,15 @@ export function TermsListTable({
       <div className="flex-1 min-h-0 overflow-auto border border-slate-100 rounded-xl">
         <table className="w-full text-right border-collapse text-xs" dir="rtl">
           <thead>
-            <tr className="border-b border-slate-200 text-slate-500 font-bold bg-slate-50">
-              <th className="p-3 font-semibold text-center w-[6%]" title="ردیف">ردیف</th>
+            <tr className="border-b border-slate-200 text-slate-500 font-bold bg-slate-50 text-[11px]">
+              <th className="p-3 font-semibold text-center w-[6%]" title="ردیف">#</th>
               <th className="p-3 font-semibold text-right w-[16%]" title="سانس کاری انتخاب شده">سانس</th>
-              <th className="p-3 font-semibold text-center w-[10%]" title="نوع صندلی اختصاص یافته">صندلی</th>
+              <th className="p-3 font-semibold text-center w-[10%]" title="نوع صندلی">صندلی</th>
               <th className="p-3 font-semibold text-right w-[14%]" title="تاریخ شروع قرارداد">شروع</th>
               <th className="p-3 font-semibold text-right w-[14%]" title="تاریخ پایان قرارداد">پایان</th>
               <th className="p-3 text-center font-semibold w-[12%]" title="تعداد جلسات مجاز دوره">جلسات</th>
-              <th className="p-3 text-center font-semibold w-[10%]" title="وضعیت فعلی دوره اشتراک">وضعیت</th>
-              <th className="p-3 text-left font-semibold w-[18%]">عملیات</th>
+              <th className="p-3 text-center font-semibold w-[10%]" title="وضعیت فعلی دوره">وضعیت</th>
+              <th className="p-3 text-left font-semibold w-[18%]" title="عملیات">عملیات</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">

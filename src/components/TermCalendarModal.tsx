@@ -135,8 +135,8 @@ export function TermCalendarModal({
           {!isInline ? (
             <button
               onClick={onClose}
-              className="text-slate-400 hover:text-slate-605 transition-colors p-1.5 hover:bg-slate-50 rounded-lg cursor-pointer animate-fade-in"
-              title="بستن تقویم"
+              className="text-slate-400 hover:text-slate-600 transition-colors p-1.5 hover:bg-slate-50 rounded-lg cursor-pointer animate-fade-in"
+              title="بستن"
             >
               <X className="w-5 h-5" />
             </button>
@@ -145,11 +145,10 @@ export function TermCalendarModal({
           )}
           
           <div className="text-right">
-            <span className="text-[10px] text-slate-400 font-bold block mb-1">تقویم تعاملی و ثبت مستندات جلسات مراجع:</span>
-            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2 flex-row-reverse justify-end font-sans">
+            <h3 className="text-xs font-bold text-slate-800 flex items-center gap-2 flex-row-reverse justify-end font-sans">
               <span className="text-blue-700">{selTermEnriched.shiftName}</span>
               <span className="text-slate-300">|</span>
-              <span className="text-xs text-slate-500 font-mono font-bold">بازه: {selTermEnriched.startDate} تا {selTermEnriched.endDate}</span>
+              <span className="text-xs text-slate-500 font-mono font-bold">{selTermEnriched.startDate} ↔ {selTermEnriched.endDate}</span>
             </h3>
           </div>
         </div>
@@ -160,8 +159,7 @@ export function TermCalendarModal({
           : "w-full bg-slate-50/70 border border-slate-200 rounded-2xl p-4 flex flex-col gap-3.5 shadow-xs"}>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-200 p-[2px] pb-[2px] mb-0">
             <div>
-              <span className="text-[10px] text-slate-400 font-bold">نمای ماه‌های دارای جلسه در این دوره:</span>
-              <div className="flex flex-wrap gap-1 mt-1.5 flex-row-reverse justify-end">
+              <div className="flex flex-wrap gap-1 mt-1 flex-row-reverse justify-end">
                 {getSpannedMonths().map((m) => {
                   const isCurrent = selectedCalYearMonth?.year === m.year && selectedCalYearMonth?.month === m.month;
                   return (
@@ -199,31 +197,27 @@ export function TermCalendarModal({
                       setActiveCalendarDate(todayDate);
                     }
                   }}
-                  className="px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all cursor-pointer border bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100 hover:border-amber-300 flex items-center gap-1 shadow-3xs"
-                  title="پرش به ماه جاری و انتخاب تاریخ امروز"
+                  className="px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer border bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100 flex items-center gap-1 shadow-3xs"
+                  title="انتخاب امروز"
                 >
                   <CalendarClock className="w-3.5 h-3.5 text-amber-700" />
-                  <span>انتخاب امروز</span>
+                  <span>امروز</span>
                 </button>
               </div>
             </div>
             
-            <div className="flex items-center gap-3 text-[10px] font-bold text-slate-500 flex-row-reverse flex-wrap">
+            <div className="flex items-center gap-2.5 text-[10px] font-bold text-slate-500 flex-row-reverse flex-wrap">
               <div className="flex items-center gap-1 flex-row-reverse">
                 <span className="w-2.5 h-2.5 rounded bg-blue-100 border border-blue-300 inline-block"></span>
-                <span>جلسه ساده</span>
+                <span>جلسه</span>
               </div>
               <div className="flex items-center gap-1 flex-row-reverse">
                 <span className="w-2.5 h-2.5 rounded bg-amber-50 border border-amber-300 inline-block"></span>
-                <span>دارای یادداشت</span>
+                <span>یادداشت</span>
               </div>
               <div className="flex items-center gap-1 flex-row-reverse">
                 <span className="w-2.5 h-2.5 rounded bg-rose-50 border border-rose-200 inline-block"></span>
-                <span>روز تعطیل</span>
-              </div>
-              <div className="flex items-center gap-1 flex-row-reverse">
-                <span className="w-2.5 h-2.5 rounded bg-blue-600 inline-block ring-1 ring-blue-600"></span>
-                <span>روز فعال انتخابی</span>
+                <span>تعطیل</span>
               </div>
             </div>
           </div>

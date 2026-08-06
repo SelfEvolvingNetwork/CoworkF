@@ -134,21 +134,21 @@ export function CalendarTab({
       <div id="full-width-calendar-card" className="flex flex-col w-full text-right">
         
         {/* Calendar Header with Navigation */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-between items-center pb-[6px] pr-0 pl-0 pt-[3px] border-b border-slate-200 mb-0">
+        <div className="flex flex-col sm:flex-row gap-3 justify-between items-center pb-2 border-b border-slate-200 mb-0">
           <div className="flex items-center gap-2">
-            <CalendarDays className="w-5.5 h-5.5 text-blue-600" />
-            <h2 className="text-md font-bold text-slate-800 flex items-center gap-1">
-              <span>تقویم و کنترل جلسات کاری:</span>
-              <span className="text-blue-600 font-extrabold">{getJalaliMonthName(currentMonth)} {currentYear}</span>
+            <CalendarDays className="w-5 h-5 text-blue-600" />
+            <h2 className="text-sm font-black text-slate-800 flex items-center gap-1.5">
+              <span>تقویم:</span>
+              <span className="text-blue-600 font-black">{getJalaliMonthName(currentMonth)} {currentYear}</span>
             </h2>
           </div>
 
           {/* Nav Controls */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               id="year-prev-btn"
               onClick={handlePrevYear}
-              className="px-2.5 py-1 text-xs font-mono bg-white border border-slate-200 hover:bg-slate-50 text-slate-500 rounded-lg cursor-pointer transition-colors"
+              className="px-2 py-1 text-xs font-mono bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg cursor-pointer transition-colors"
               title="سال قبل"
             >
               {currentYear - 1} »
@@ -156,7 +156,7 @@ export function CalendarTab({
             <button
               id="month-prev-btn"
               onClick={handlePrevMonth}
-              className="py-[4px] px-[6px] bg-white border border-slate-200 hover:bg-slate-50 text-slate-500 rounded-lg cursor-pointer transition-colors"
+              className="p-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg cursor-pointer transition-colors"
               title="ماه قبل (Alt + ArrowRight)"
             >
               <ChevronRight className="w-4 h-4" />
@@ -170,7 +170,8 @@ export function CalendarTab({
                 setCurrentMonth(todayPartsNow.jm);
                 setSelectedDate(todayDate);
               }}
-              className="px-3 py-1 bg-blue-50 text-blue-600 border border-blue-150 text-xs font-bold rounded-lg hover:bg-blue-105 cursor-pointer transition-colors"
+              className="px-3 py-1 bg-blue-50 text-blue-600 border border-blue-200 text-xs font-bold rounded-lg hover:bg-blue-100 cursor-pointer transition-colors"
+              title="برگشت به امروز"
             >
               امروز
             </button>
@@ -178,7 +179,7 @@ export function CalendarTab({
             <button
               id="month-next-btn"
               onClick={handleNextMonth}
-              className="py-[4px] px-[6px] bg-white border border-slate-200 hover:bg-slate-50 text-slate-500 rounded-lg cursor-pointer transition-colors"
+              className="p-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg cursor-pointer transition-colors"
               title="ماه بعد (Alt + ArrowLeft)"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -186,7 +187,7 @@ export function CalendarTab({
             <button
               id="year-next-btn"
               onClick={handleNextYear}
-              className="px-2.5 py-1 text-xs font-mono bg-white border border-slate-200 hover:bg-slate-50 text-slate-500 rounded-lg cursor-pointer transition-colors"
+              className="px-2 py-1 text-xs font-mono bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg cursor-pointer transition-colors"
               title="سال بعد"
             >
               « {currentYear + 1}
